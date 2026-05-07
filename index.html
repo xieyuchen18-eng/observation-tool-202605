@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#2563eb">
 <title>Road Observation Recorder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 :root {
   --primary: #2563eb;
@@ -24,350 +25,141 @@
   --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
   --shadow-lg: 0 10px 25px rgba(0,0,0,0.08), 0 4px 10px rgba(0,0,0,0.04);
 }
-
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
-
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", Roboto, sans-serif;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--bg); color: var(--text);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Topbar */
 .topbar {
-  position: sticky;
-  top: 0;
-  background: var(--card);
+  position: sticky; top: 0; background: var(--card);
   border-bottom: 1px solid var(--border);
-  padding: 8px 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  z-index: 100;
-  min-height: 48px;
+  padding: 8px 12px; display: flex; align-items: center; gap: 8px;
+  z-index: 100; min-height: 48px;
 }
 .topbar-left, .topbar-right { display: flex; gap: 6px; align-items: center; }
 .topbar-center { flex: 1; display: flex; justify-content: center; }
-
-.counter-pill {
-  background: var(--primary-light);
-  color: var(--primary);
-  padding: 5px 12px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.gps-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: var(--bg);
-  padding: 5px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  color: var(--muted);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: background 0.15s;
-  white-space: nowrap;
-  font-weight: 500;
-}
+.counter-pill { background: var(--primary-light); color: var(--primary); padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.gps-pill { display: inline-flex; align-items: center; gap: 5px; background: var(--bg); padding: 5px 10px; border-radius: 999px; font-size: 12px; color: var(--muted); border: 1px solid var(--border); cursor: pointer; transition: background 0.15s; white-space: nowrap; font-weight: 500; }
 .gps-pill:hover { background: #e2e8f0; }
-.gps-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--muted);
-  flex-shrink: 0;
-}
+.gps-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
 .gps-pill.searching .gps-dot { background: var(--warning); animation: pulse 1.4s ease-in-out infinite; }
 .gps-pill.good .gps-dot { background: var(--success); }
 .gps-pill.fair .gps-dot { background: var(--warning); }
 .gps-pill.poor .gps-dot { background: #f97316; }
 .gps-pill.error .gps-dot { background: var(--danger); }
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.8); }
-}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.5;transform:scale(0.8);} }
 
-.lang-toggle {
-  display: inline-flex;
-  background: var(--bg);
-  border-radius: 8px;
-  padding: 2px;
-  border: 1px solid var(--border);
-}
-.lang-toggle button {
-  border: none;
-  background: transparent;
-  padding: 4px 12px;
-  font-size: 13px;
-  border-radius: 6px;
-  cursor: pointer;
-  color: var(--muted);
-  font-weight: 500;
-  margin: 0;
-  width: auto;
-  font-family: inherit;
-}
-.lang-toggle button.active {
-  background: var(--card);
-  color: var(--primary);
-  box-shadow: var(--shadow-sm);
-}
+.lang-toggle { display: inline-flex; background: var(--bg); border-radius: 8px; padding: 2px; border: 1px solid var(--border); }
+.lang-toggle button { border: none; background: transparent; padding: 4px 12px; font-size: 13px; border-radius: 6px; cursor: pointer; color: var(--muted); font-weight: 500; margin: 0; width: auto; font-family: inherit; }
+.lang-toggle button.active { background: var(--card); color: var(--primary); box-shadow: var(--shadow-sm); }
 
-.icon-btn {
-  border: none;
-  background: transparent;
-  padding: 6px 10px;
-  cursor: pointer;
-  border-radius: 8px;
-  font-size: 20px;
-  color: var(--text);
-  width: auto; margin: 0;
-  font-family: inherit;
-  line-height: 1;
-}
+.icon-btn { border: none; background: transparent; padding: 6px 10px; cursor: pointer; border-radius: 8px; font-size: 20px; color: var(--text); width: auto; margin: 0; font-family: inherit; line-height: 1; }
 .icon-btn:hover { background: var(--bg); }
 
-.menu-dropdown {
-  position: absolute;
-  top: 52px;
-  right: 8px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
-  min-width: 220px;
-  overflow: hidden;
-  z-index: 200;
-}
-.menu-dropdown button {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 14px 18px;
-  border: none;
-  background: var(--card);
-  cursor: pointer;
-  font-size: 14px;
-  margin: 0;
-  border-bottom: 1px solid var(--border);
-  color: var(--text);
-  font-family: inherit;
-  font-weight: 500;
-}
+.menu-dropdown { position: absolute; top: 52px; right: 8px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lg); min-width: 240px; overflow: hidden; z-index: 200; }
+.menu-dropdown button { display: block; width: 100%; text-align: left; padding: 14px 18px; border: none; background: var(--card); cursor: pointer; font-size: 14px; margin: 0; border-bottom: 1px solid var(--border); color: var(--text); font-family: inherit; font-weight: 500; }
 .menu-dropdown button:last-child { border-bottom: none; }
 .menu-dropdown button:hover { background: var(--bg); }
+.menu-dropdown button.danger { color: var(--danger); }
+.menu-section-label { padding: 8px 18px 6px; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; background: var(--bg); border-bottom: 1px solid var(--border); }
 
-.container {
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 16px;
-  padding-bottom: 80px;
-}
-
-.card {
-  background: var(--card);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 20px;
-}
+.container { max-width: 640px; margin: 0 auto; padding: 16px; padding-bottom: 80px; }
+.card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
 
 h2 { font-size: 22px; font-weight: 700; margin: 0 0 4px; text-align: center; }
 h3 { font-size: 18px; font-weight: 600; margin: 0 0 16px; }
-.subtitle {
-  color: var(--muted);
-  font-size: 13px;
-  margin: 0 0 20px;
-  text-align: center;
-  line-height: 1.5;
-}
+.subtitle { color: var(--muted); font-size: 13px; margin: 0 0 20px; text-align: center; line-height: 1.5; }
 
-label.field {
-  display: block;
-  margin: 16px 0 6px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-}
+label.field { display: block; margin: 16px 0 6px; font-size: 14px; font-weight: 600; color: var(--text); }
+.field-hint { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 4px; }
 
-input[type=text], select, textarea {
-  width: 100%;
-  padding: 12px 14px;
-  font-size: 16px;
-  border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  background: var(--card);
-  color: var(--text);
-  transition: border-color 0.15s, box-shadow 0.15s;
-  font-family: inherit;
-}
-input[type=text]:focus, select:focus, textarea:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-}
+input[type=text], select, textarea { width: 100%; padding: 12px 14px; font-size: 16px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--card); color: var(--text); transition: border-color 0.15s, box-shadow 0.15s; font-family: inherit; }
+input[type=text]:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12); }
 textarea { resize: vertical; min-height: 100px; }
 
-.chip-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 6px 0 4px;
-}
-.chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 8px 14px;
-  background: var(--card);
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  cursor: pointer;
-  font-size: 14px;
-  user-select: none;
-  transition: all 0.15s;
-  color: var(--text);
-}
+.chip-group { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
+.chip { display: inline-flex; align-items: center; padding: 8px 14px; background: var(--card); border: 1px solid var(--border-strong); border-radius: 999px; cursor: pointer; font-size: 14px; user-select: none; transition: all 0.15s; color: var(--text); }
 .chip input { display: none; }
-.chip.checked {
-  background: var(--primary-light);
-  border-color: var(--primary);
-  color: var(--primary);
-  font-weight: 600;
-}
+.chip.checked { background: var(--primary-light); border-color: var(--primary); color: var(--primary); font-weight: 600; }
 .chip:active { transform: scale(0.97); }
 
-.btn {
-  display: block;
-  width: 100%;
-  padding: 14px 20px;
-  font-size: 16px;
-  font-weight: 600;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
-  transition: transform 0.05s, background 0.15s;
-  margin: 0;
-  font-family: inherit;
-  text-align: center;
-}
+.btn { display: block; width: 100%; padding: 14px 20px; font-size: 16px; font-weight: 600; border-radius: 10px; border: none; cursor: pointer; transition: transform 0.05s, background 0.15s; margin: 0; font-family: inherit; text-align: center; }
 .btn:active { transform: scale(0.98); }
-.btn-primary {
-  background: var(--primary);
-  color: white;
-  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.3);
-}
-.btn-primary:hover { background: var(--primary-dark); }
-.btn-secondary {
-  background: var(--card);
-  color: var(--text);
-  border: 1px solid var(--border-strong);
-}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: var(--primary); color: white; box-shadow: 0 1px 2px rgba(37, 99, 235, 0.3); }
+.btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+.btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border-strong); }
 .btn-secondary:hover { background: var(--bg); }
 
 .action-row { display: grid; gap: 10px; margin-top: 20px; }
 
 .behavior-list { display: flex; flex-direction: column; gap: 10px; }
-.behavior-btn {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 16px 18px;
-  margin: 0;
-  font-size: 16px;
-  font-weight: 500;
-  text-align: left;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  cursor: pointer;
-  color: var(--text);
-  transition: all 0.15s;
-  font-family: inherit;
-}
+.behavior-btn { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 16px 18px; margin: 0; font-size: 16px; font-weight: 500; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; color: var(--text); transition: all 0.15s; font-family: inherit; }
 .behavior-btn:hover { border-color: var(--primary); background: #f8faff; }
 .behavior-btn:active { transform: scale(0.99); }
-.behavior-btn::after {
-  content: '›';
-  color: var(--muted);
-  font-size: 24px;
-  font-weight: 300;
-  line-height: 1;
-}
+.behavior-btn::after { content: '›'; color: var(--muted); font-size: 24px; font-weight: 300; line-height: 1; }
 
-.breadcrumb {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  font-size: 13px;
-  margin-bottom: 14px;
-  align-items: center;
-}
+.breadcrumb { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; margin-bottom: 14px; align-items: center; }
 .breadcrumb:empty { display: none; }
-.crumb {
-  background: var(--primary-light);
-  color: var(--primary);
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-weight: 500;
-}
+.crumb { background: var(--primary-light); color: var(--primary); padding: 4px 10px; border-radius: 999px; font-weight: 500; }
 .crumb-sep { color: var(--muted); font-size: 14px; }
 
 .back-row { display: flex; align-items: center; margin-bottom: 8px; }
-.back-btn {
-  background: transparent;
-  border: none;
-  color: var(--primary);
-  font-size: 14px;
-  font-weight: 600;
-  padding: 6px 0;
-  margin: 0;
-  width: auto;
-  cursor: pointer;
-  font-family: inherit;
-}
+.back-btn { background: transparent; border: none; color: var(--primary); font-size: 14px; font-weight: 600; padding: 6px 0; margin: 0; width: auto; cursor: pointer; font-family: inherit; }
 .back-btn:hover { text-decoration: underline; }
 
-.gps-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  font-size: 13px;
-  color: var(--muted);
-  margin-bottom: 14px;
-}
+.gps-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; color: var(--muted); margin-bottom: 14px; }
 .gps-row strong { color: var(--text); font-weight: 600; }
 
-#toast {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%) translateY(20px);
-  background: rgba(15, 23, 42, 0.95);
-  color: white;
-  padding: 12px 20px;
-  border-radius: 10px;
-  font-size: 14px;
-  box-shadow: var(--shadow-lg);
-  opacity: 0;
-  transition: all 0.25s ease;
-  pointer-events: none;
-  z-index: 2000;
-  max-width: calc(100% - 32px);
-  text-align: center;
-  font-weight: 500;
-}
+.photo-gallery { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 0; }
+.photo-thumb { position: relative; width: 84px; height: 84px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); background: var(--bg); cursor: pointer; }
+.photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-remove { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; background: rgba(15, 23, 42, 0.85); color: white; border: none; cursor: pointer; font-size: 16px; font-weight: 700; padding: 0; margin: 0; line-height: 1; display: flex; align-items: center; justify-content: center; }
+.photo-add { width: 84px; height: 84px; border: 2px dashed var(--border-strong); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 32px; font-weight: 300; transition: all 0.15s; background: var(--card); position: relative; cursor: pointer; }
+.photo-add:hover { border-color: var(--primary); color: var(--primary); }
+.photo-add input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+.photo-viewer { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 3000; display: flex; align-items: center; justify-content: center; }
+.photo-viewer img { max-width: 96%; max-height: 92%; object-fit: contain; }
+.photo-viewer-close { position: fixed; top: 16px; right: 16px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.2); color: white; border: none; font-size: 26px; cursor: pointer; margin: 0; line-height: 1; }
+
+/* WeChat banner */
+.wechat-banner { background: #fef3c7; color: #78350f; border-bottom: 1px solid #fde68a; padding: 10px 14px; font-size: 13px; line-height: 1.5; text-align: center; position: sticky; top: 48px; z-index: 99; }
+.wechat-banner b { font-weight: 700; }
+
+/* Modal (generic) */
+.modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 2500; display: flex; align-items: center; justify-content: center; padding: 16px; animation: fadeIn 0.15s; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow-lg); max-width: 480px; width: 100%; max-height: 90vh; overflow: auto; }
+.modal-header { padding: 20px 20px 0; }
+.modal-title { font-size: 18px; font-weight: 700; margin: 0 0 8px; }
+.modal-body { padding: 12px 20px 20px; font-size: 14px; line-height: 1.6; color: var(--text); }
+.modal-body p { margin: 0 0 12px; }
+.modal-body ol, .modal-body ul { padding-left: 20px; margin: 0 0 12px; }
+.modal-body li { margin-bottom: 6px; }
+.modal-footer { padding: 0 20px 20px; display: flex; gap: 10px; justify-content: flex-end; }
+.modal-footer .btn { width: auto; padding: 10px 18px; font-size: 14px; }
+
+/* Photo gallery modal */
+.gallery-modal { position: fixed; inset: 0; background: rgba(15,23,42,0.95); z-index: 3000; display: flex; flex-direction: column; }
+.gallery-modal-header { background: rgba(15,23,42,0.98); color: white; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.gallery-modal-title { font-weight: 600; font-size: 15px; }
+.gallery-modal-close { background: rgba(255,255,255,0.15); color: white; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 22px; cursor: pointer; margin: 0; line-height: 1; display: flex; align-items: center; justify-content: center; }
+.gallery-modal-tip { background: rgba(245, 158, 11, 0.15); color: #fcd34d; padding: 10px 16px; font-size: 13px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.gallery-modal-list { flex: 1; overflow-y: auto; padding: 16px; }
+.gallery-modal-item { margin-bottom: 24px; max-width: 600px; margin-left: auto; margin-right: auto; }
+.gallery-modal-item img { width: 100%; display: block; border-radius: 8px; }
+.gallery-modal-item .cap { color: #cbd5e1; font-size: 13px; text-align: center; margin-top: 8px; }
+
+/* CSV preview textarea */
+.csv-preview { width: 100%; height: 180px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); resize: vertical; }
+
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: rgba(15, 23, 42, 0.95); color: white; padding: 12px 20px; border-radius: 10px; font-size: 14px; box-shadow: var(--shadow-lg); opacity: 0; transition: all 0.25s ease; pointer-events: none; z-index: 4000; max-width: calc(100% - 32px); text-align: center; font-weight: 500; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 #toast.error { background: var(--danger); }
 #toast.success { background: var(--success); }
@@ -405,13 +197,22 @@ textarea { resize: vertical; min-height: 100px; }
   </div>
 </div>
 
+<div id="wechatBanner" class="wechat-banner hidden">
+  <b data-i18n="wechat_detected">WeChat browser detected</b><br>
+  <span data-i18n="wechat_tip">Direct download is restricted. Use the menu to copy CSV / save photos, or open in external browser for ZIP download.</span>
+</div>
+
 <div id="menu" class="menu-dropdown hidden">
   <button onclick="pauseResume()" id="pauseBtn" data-i18n="pause_recording">Pause Recording</button>
-  <button onclick="exportCSV()" data-i18n="stop_export">Stop &amp; Export (CSV)</button>
+  <div class="menu-section-label" data-i18n="menu_export">Export</div>
+  <button onclick="copyCsvAction()" data-i18n="copy_csv">📋 Copy CSV</button>
+  <button onclick="viewAllPhotosAction()" data-i18n="view_photos">🖼 View / Save Photos</button>
+  <button onclick="downloadZipAction()" id="downloadZipBtn" data-i18n="download_zip">💾 Download ZIP</button>
+  <div class="menu-section-label" data-i18n="menu_session">Session</div>
+  <button onclick="confirmClearAll()" class="danger" data-i18n="clear_all">🗑 Clear All Data</button>
 </div>
 
 <div class="container">
-
   <div id="loginPage" class="page card">
     <h2 data-i18n="login">Login</h2>
     <p class="subtitle" data-i18n="login_subtitle">Enter your observer ID to start a recording session.</p>
@@ -419,16 +220,15 @@ textarea { resize: vertical; min-height: 100px; }
     <input type="text" id="observer" data-i18n-ph="enter_observer_id" placeholder="Enter observer ID" autocomplete="off">
     <div style="margin-top:20px"></div>
     <button class="btn btn-primary" onclick="login()" data-i18n="login">Login</button>
-    <p class="subtitle" style="margin-top:18px;margin-bottom:0;" data-i18n="login_note">After login, GPS tracking will start. Allow location permission when prompted.</p>
+    <p class="subtitle" style="margin-top:18px;margin-bottom:0;" data-i18n="login_note">After login, GPS and camera access will be requested. Allow them when prompted.</p>
+    <p class="subtitle" style="margin-top:8px;margin-bottom:0;font-size:12px;" data-i18n="autosave_note">Records are automatically saved on this device. They survive page reload, app close, and offline use.</p>
   </div>
 
   <div id="page1" class="page card hidden">
     <h2 data-i18n="record_info">Record Info</h2>
     <p class="subtitle" data-i18n="record_info_sub">Set the context for this observation session.</p>
-
     <label class="field" for="location" data-i18n="location_site">Location / Site ID</label>
     <input type="text" id="location" data-i18n-ph="location_placeholder" placeholder="e.g., Site-01 or Intersection A" autocomplete="off">
-
     <label class="field" for="locationType" data-i18n="location_type">Location Type</label>
     <select id="locationType">
       <option value="Residential (Old)" data-i18n="opt_residential_old">Residential (Old)</option>
@@ -440,7 +240,6 @@ textarea { resize: vertical; min-height: 100px; }
       <option value="Green Area" data-i18n="opt_green_area">Green Area</option>
       <option value="Other" data-i18n="opt_other">Other</option>
     </select>
-
     <label class="field" data-i18n="weather_label">Weather (multi-select)</label>
     <div id="weatherChips" class="chip-group">
       <label class="chip"><input type="checkbox" value="Sunny"><span data-i18n="w_sunny">Sunny</span></label>
@@ -454,7 +253,6 @@ textarea { resize: vertical; min-height: 100px; }
       <label class="chip"><input type="checkbox" value="Snow/Ice"><span data-i18n="w_snow">Snow/Ice</span></label>
       <label class="chip"><input type="checkbox" value="Other"><span data-i18n="w_other">Other</span></label>
     </div>
-
     <label class="field" for="roadType" data-i18n="road_type">Road Type</label>
     <select id="roadType">
       <option value="Intersection" data-i18n="rt_intersection">Intersection</option>
@@ -466,7 +264,6 @@ textarea { resize: vertical; min-height: 100px; }
       <option value="Overpass/Intersection" data-i18n="rt_overpass">Overpass/Intersection</option>
       <option value="Other" data-i18n="rt_other">Other</option>
     </select>
-
     <div style="margin-top:20px"></div>
     <button class="btn btn-primary" onclick="startRecording()" data-i18n="start_recording">Start Recording</button>
   </div>
@@ -475,30 +272,30 @@ textarea { resize: vertical; min-height: 100px; }
     <h3 data-i18n="select_lane_use">Select Lane Use Behavior</h3>
     <div id="primaryButtons" class="behavior-list"></div>
   </div>
-
   <div id="pageSecondary" class="page card hidden">
     <div class="back-row"><button class="back-btn" onclick="goBack('pageSecondary')">← <span data-i18n="back">Back</span></button></div>
     <h3 data-i18n="select_other_behavior">Select Other Behavior</h3>
     <div id="breadcrumbSecondary" class="breadcrumb"></div>
     <div id="secondaryButtons" class="behavior-list"></div>
   </div>
-
   <div id="pageTertiary" class="page card hidden">
     <div class="back-row"><button class="back-btn" onclick="goBack('pageTertiary')">← <span data-i18n="back">Back</span></button></div>
     <h3 data-i18n="select_additional">Select Additional Behavior</h3>
     <div id="breadcrumbTertiary" class="breadcrumb"></div>
     <div id="tertiaryButtons" class="behavior-list"></div>
   </div>
-
   <div id="pageNoteMulti" class="page card hidden">
     <div class="back-row"><button class="back-btn" onclick="goBack('pageNoteMulti')">← <span data-i18n="back">Back</span></button></div>
-    <h3 data-i18n="enter_notes">Enter Notes (Optional)</h3>
+    <h3 data-i18n="enter_notes">Enter Notes &amp; Photos</h3>
     <div id="breadcrumbNote" class="breadcrumb"></div>
     <div class="gps-row">
       <span class="gps-dot" id="gpsRowDot"></span>
       <strong data-i18n="gps_label">GPS</strong>
       <span id="gpsRowText">—</span>
     </div>
+    <label class="field"><span data-i18n="photos_label">Photos</span> <span class="field-hint" id="photoHint">(0/3)</span></label>
+    <div class="photo-gallery" id="photoGallery"></div>
+    <label class="field" for="note" data-i18n="note_label">Notes (optional)</label>
     <textarea id="note" data-i18n-ph="note_placeholder" placeholder="Write a short note..."></textarea>
     <div class="action-row">
       <button class="btn btn-primary" onclick="saveRecord(false)" data-i18n="save_next">Save &amp; Next</button>
@@ -507,21 +304,38 @@ textarea { resize: vertical; min-height: 100px; }
   </div>
 </div>
 
+<div id="modalContainer"></div>
 <div id="toast"></div>
 
 <script>
+/* ============ Configuration ============ */
+const MAX_PHOTOS = 3;
+const PHOTO_MAX_DIM = 1600;
+const PHOTO_QUALITY = 0.85;
+const DB_NAME = 'roadObsDB';
+const DB_VERSION = 1;
+
+/* ============ I18N ============ */
 const I18N = {
   en: {
     app_title: 'Road Observation Recorder',
     recorded_ect: 'Recorded',
     pause_recording: 'Pause Recording',
     resume_recording: 'Resume Recording',
-    stop_export: 'Stop & Export (CSV)',
+    menu_export: 'Export',
+    menu_session: 'Session',
+    copy_csv: '📋 Copy CSV to Clipboard',
+    view_photos: '🖼 View / Save Photos',
+    download_zip: '💾 Download ZIP',
+    clear_all: '🗑 Clear All Data',
+
     login: 'Login',
     login_subtitle: 'Enter your observer ID to start a recording session.',
     observer_id: 'Observer ID',
     enter_observer_id: 'Enter observer ID',
-    login_note: 'After login, GPS tracking will start. Allow location permission when prompted.',
+    login_note: 'After login, GPS and camera access will be requested. Allow them when prompted.',
+    autosave_note: 'Records are automatically saved on this device. They survive page reload, app close, and offline use.',
+
     record_info: 'Record Info',
     record_info_sub: 'Set the context for this observation session.',
     location_site: 'Location / Site ID',
@@ -530,14 +344,17 @@ const I18N = {
     weather_label: 'Weather (multi-select)',
     road_type: 'Road Type',
     start_recording: 'Start Recording',
+
     select_lane_use: 'Select Lane Use Behavior',
     select_other_behavior: 'Select Other Behavior',
     select_additional: 'Select Additional Behavior',
-    enter_notes: 'Enter Notes (Optional)',
+    enter_notes: 'Enter Notes & Photos',
+    note_label: 'Notes (optional)',
     note_placeholder: 'Write a short note...',
     multiple_violations: 'Multiple Violations (Same ID)',
     save_next: 'Save & Next',
     back: 'Back',
+
     gps_label: 'GPS',
     gps_searching: 'Searching...',
     gps_no_signal: 'No signal',
@@ -548,6 +365,29 @@ const I18N = {
     gps_lng: 'Longitude',
     gps_acc: 'Accuracy',
     gps_updated: 'Updated',
+
+    photos_label: 'Photos',
+
+    wechat_detected: 'WeChat browser detected',
+    wechat_tip: 'Direct download is restricted in WeChat. Use the menu to copy CSV / save photos, or tap ⋯ in top-right → Open in Browser.',
+    wechat_export_title: 'WeChat: How to Save Files',
+    wechat_export_body: 'WeChat blocks direct file downloads. You have two options:',
+    wechat_export_option1: 'Use the menu commands: Copy CSV to clipboard, then View / Save Photos to long-press each photo to your album.',
+    wechat_export_option2: 'Tap ⋯ in the top-right corner of WeChat, then "Open in Browser". From there, Download ZIP works normally.',
+    wechat_got_it: 'Got it',
+
+    csv_modal_title: 'CSV Data',
+    csv_modal_tip: 'Tap "Copy" then paste into WeChat / email / notes app.',
+    copy: 'Copy',
+    close: 'Close',
+    photo_save_tip: 'Long-press a photo to save it to your photo album.',
+    gallery_title: 'All Photos',
+
+    confirm_clear_title: 'Clear All Data?',
+    confirm_clear_body: 'This permanently deletes all unsaved records and photos from this device. Make sure you have exported (Copy CSV / Save Photos / Download ZIP) first.',
+    confirm_clear_yes: 'Yes, clear all',
+    cancel: 'Cancel',
+
     alert_observer: 'Please enter observer ID',
     alert_location: 'Please enter location',
     alert_paused: 'Recording paused',
@@ -555,60 +395,63 @@ const I18N = {
     alert_no_records: 'No records to export',
     alert_recording_paused: 'Recording is paused',
     alert_record_saved: 'Record saved',
-    alert_csv_exported: 'CSV exported',
-    opt_residential_old: 'Residential (Old)',
-    opt_residential_new: 'Residential (New)',
-    opt_commercial: 'Commercial',
-    opt_transport_hub: 'Transport Hub',
-    opt_schools_hospitals: 'Schools / Hospitals',
-    opt_industrial: 'Industrial',
-    opt_green_area: 'Green Area',
-    opt_other: 'Other',
-    w_sunny: 'Sunny',
-    w_cloudy: 'Cloudy',
-    w_overcast: 'Overcast',
-    w_shower: 'Shower',
-    w_thunderstorm: 'Thunderstorm',
-    w_light_rain: 'Light/Moderate Rain',
-    w_heavy_rain: 'Heavy Rain+',
-    w_fog: 'Fog/Haze',
-    w_snow: 'Snow/Ice',
-    w_other: 'Other',
-    rt_intersection: 'Intersection',
-    rt_tjunction: 'T-junction',
-    rt_straight: 'Straight Road',
-    rt_oneway: 'One-way',
-    rt_single_lane: 'Single-lane Road',
-    rt_multi_lane: 'Multi-lane Road',
-    rt_overpass: 'Overpass/Intersection',
-    rt_other: 'Other',
-    csv_h_id: 'ViolationID',
-    csv_h_time: 'Time',
-    csv_h_observer: 'Observer',
-    csv_h_location: 'Location',
-    csv_h_locType: 'LocationType',
-    csv_h_weather: 'Weather',
-    csv_h_roadType: 'RoadType',
-    csv_h_primary: 'Primary',
-    csv_h_secondary: 'Secondary',
+    alert_csv_copied: 'CSV copied to clipboard',
+    alert_csv_copy_failed: 'Copy failed — manually select and copy the text below',
+    alert_csv_exported: 'Export complete',
+    alert_max_photos: 'Maximum {n} photos per record',
+    alert_photo_failed: 'Failed to load photo',
+    alert_exporting: 'Packaging files...',
+    alert_export_failed: 'Export failed',
+    alert_no_photos: 'No photos to view',
+    alert_data_cleared: 'All data cleared',
+    alert_session_restored: 'Restored {n} records from previous session',
+    alert_db_unavailable: 'Local storage unavailable — data will be lost on close',
+
+    opt_residential_old: 'Residential (Old)', opt_residential_new: 'Residential (New)',
+    opt_commercial: 'Commercial', opt_transport_hub: 'Transport Hub',
+    opt_schools_hospitals: 'Schools / Hospitals', opt_industrial: 'Industrial',
+    opt_green_area: 'Green Area', opt_other: 'Other',
+
+    w_sunny: 'Sunny', w_cloudy: 'Cloudy', w_overcast: 'Overcast',
+    w_shower: 'Shower', w_thunderstorm: 'Thunderstorm',
+    w_light_rain: 'Light/Moderate Rain', w_heavy_rain: 'Heavy Rain+',
+    w_fog: 'Fog/Haze', w_snow: 'Snow/Ice', w_other: 'Other',
+
+    rt_intersection: 'Intersection', rt_tjunction: 'T-junction',
+    rt_straight: 'Straight Road', rt_oneway: 'One-way',
+    rt_single_lane: 'Single-lane Road', rt_multi_lane: 'Multi-lane Road',
+    rt_overpass: 'Overpass/Intersection', rt_other: 'Other',
+
+    csv_h_id: 'ViolationID', csv_h_time: 'Time', csv_h_observer: 'Observer',
+    csv_h_location: 'Location', csv_h_locType: 'LocationType',
+    csv_h_weather: 'Weather', csv_h_roadType: 'RoadType',
+    csv_h_primary: 'Primary', csv_h_secondary: 'Secondary',
     csv_h_tertiary: 'Tertiary',
-    csv_h_lat: 'Latitude',
-    csv_h_lng: 'Longitude',
-    csv_h_acc: 'Accuracy(m)',
-    csv_h_gpsTime: 'GPSTime',
-    csv_h_notes: 'Notes'
+    csv_h_lat: 'Latitude', csv_h_lng: 'Longitude',
+    csv_h_acc: 'Accuracy(m)', csv_h_gpsTime: 'GPSTime',
+    csv_h_photos: 'Photos', csv_h_notes: 'Notes',
+
+    photo_caption: 'Violation #{vid} · Photo {n}'
   },
   zh: {
     app_title: '道路观察记录器',
     recorded_ect: '已记录',
     pause_recording: '暂停记录',
     resume_recording: '继续记录',
-    stop_export: '停止并导出 (CSV)',
+    menu_export: '导出',
+    menu_session: '会话',
+    copy_csv: '📋 复制 CSV 到剪贴板',
+    view_photos: '🖼 查看 / 保存照片',
+    download_zip: '💾 下载 ZIP',
+    clear_all: '🗑 清除所有数据',
+
     login: '登录',
     login_subtitle: '请输入观察员 ID 以开始一次记录会话。',
     observer_id: '观察员 ID',
     enter_observer_id: '请输入观察员 ID',
-    login_note: '登录后将自动启动 GPS 追踪,请允许定位权限。',
+    login_note: '登录后将申请 GPS 与相机权限,请在弹窗时允许。',
+    autosave_note: '记录会自动保存在本机,即使刷新、关闭页面或断网都不会丢失。',
+
     record_info: '记录信息',
     record_info_sub: '设置本次观察会话的环境信息。',
     location_site: '地点 / 站点 ID',
@@ -617,14 +460,17 @@ const I18N = {
     weather_label: '天气 (可多选)',
     road_type: '道路类型',
     start_recording: '开始记录',
+
     select_lane_use: '选择车道使用行为',
     select_other_behavior: '选择其他行为',
     select_additional: '选择附加行为',
-    enter_notes: '输入备注 (可选)',
+    enter_notes: '输入备注与照片',
+    note_label: '备注 (可选)',
     note_placeholder: '请写一段简短的备注...',
     multiple_violations: '多项违规 (同一 ID)',
     save_next: '保存并下一条',
     back: '返回',
+
     gps_label: 'GPS',
     gps_searching: '正在搜索...',
     gps_no_signal: '无信号',
@@ -635,6 +481,29 @@ const I18N = {
     gps_lng: '经度',
     gps_acc: '精度',
     gps_updated: '更新于',
+
+    photos_label: '照片',
+
+    wechat_detected: '检测到微信浏览器',
+    wechat_tip: '微信内无法直接下载文件。请使用菜单"复制 CSV / 查看照片",或点右上角 ⋯ → 在浏览器中打开。',
+    wechat_export_title: '微信中如何保存文件',
+    wechat_export_body: '微信浏览器禁止网页直接下载文件。请用以下任一方式:',
+    wechat_export_option1: '使用菜单功能:点"复制 CSV"复制数据,再点"查看 / 保存照片"长按每张图保存到相册。',
+    wechat_export_option2: '点微信右上角 ⋯ → 在浏览器中打开。在 Safari / Chrome 里"下载 ZIP"可以正常工作。',
+    wechat_got_it: '我知道了',
+
+    csv_modal_title: 'CSV 数据',
+    csv_modal_tip: '点"复制"后,粘贴到微信 / 邮件 / 备忘录里保存。',
+    copy: '复制',
+    close: '关闭',
+    photo_save_tip: '长按图片可保存到相册。',
+    gallery_title: '所有照片',
+
+    confirm_clear_title: '确定清除所有数据?',
+    confirm_clear_body: '这将永久删除本机上所有未导出的记录和照片。请确认你已经先用"复制 CSV / 保存照片 / 下载 ZIP"导出数据。',
+    confirm_clear_yes: '确定清除',
+    cancel: '取消',
+
     alert_observer: '请输入观察员 ID',
     alert_location: '请输入地点',
     alert_paused: '记录已暂停',
@@ -642,95 +511,90 @@ const I18N = {
     alert_no_records: '没有可导出的记录',
     alert_recording_paused: '记录处于暂停状态',
     alert_record_saved: '记录已保存',
-    alert_csv_exported: 'CSV 已导出',
-    opt_residential_old: '老旧住宅区',
-    opt_residential_new: '新建住宅区',
-    opt_commercial: '商业区',
-    opt_transport_hub: '交通枢纽',
-    opt_schools_hospitals: '学校 / 医院',
-    opt_industrial: '工业区',
-    opt_green_area: '绿地',
-    opt_other: '其他',
-    w_sunny: '晴',
-    w_cloudy: '多云',
-    w_overcast: '阴',
-    w_shower: '阵雨',
-    w_thunderstorm: '雷雨',
-    w_light_rain: '小到中雨',
-    w_heavy_rain: '大雨及以上',
-    w_fog: '雾 / 霾',
-    w_snow: '雪 / 冰',
-    w_other: '其他',
-    rt_intersection: '十字路口',
-    rt_tjunction: '丁字路口',
-    rt_straight: '直路',
-    rt_oneway: '单行道',
-    rt_single_lane: '单车道道路',
-    rt_multi_lane: '多车道道路',
-    rt_overpass: '立交 / 交汇',
-    rt_other: '其他',
-    csv_h_id: '违规ID',
-    csv_h_time: '时间',
-    csv_h_observer: '观察员',
-    csv_h_location: '地点',
-    csv_h_locType: '地点类型',
-    csv_h_weather: '天气',
-    csv_h_roadType: '道路类型',
-    csv_h_primary: '一级行为',
-    csv_h_secondary: '二级行为',
+    alert_csv_copied: 'CSV 已复制到剪贴板',
+    alert_csv_copy_failed: '复制失败,请手动选中下方文字并复制',
+    alert_csv_exported: '导出完成',
+    alert_max_photos: '每条记录最多 {n} 张照片',
+    alert_photo_failed: '图片加载失败',
+    alert_exporting: '正在打包文件...',
+    alert_export_failed: '导出失败',
+    alert_no_photos: '没有照片可查看',
+    alert_data_cleared: '所有数据已清除',
+    alert_session_restored: '已恢复 {n} 条上次会话的记录',
+    alert_db_unavailable: '本地存储不可用,数据将在关闭后丢失',
+
+    opt_residential_old: '老旧住宅区', opt_residential_new: '新建住宅区',
+    opt_commercial: '商业区', opt_transport_hub: '交通枢纽',
+    opt_schools_hospitals: '学校 / 医院', opt_industrial: '工业区',
+    opt_green_area: '绿地', opt_other: '其他',
+
+    w_sunny: '晴', w_cloudy: '多云', w_overcast: '阴',
+    w_shower: '阵雨', w_thunderstorm: '雷雨',
+    w_light_rain: '小到中雨', w_heavy_rain: '大雨及以上',
+    w_fog: '雾 / 霾', w_snow: '雪 / 冰', w_other: '其他',
+
+    rt_intersection: '十字路口', rt_tjunction: '丁字路口',
+    rt_straight: '直路', rt_oneway: '单行道',
+    rt_single_lane: '单车道道路', rt_multi_lane: '多车道道路',
+    rt_overpass: '立交 / 交汇', rt_other: '其他',
+
+    csv_h_id: '违规ID', csv_h_time: '时间', csv_h_observer: '观察员',
+    csv_h_location: '地点', csv_h_locType: '地点类型',
+    csv_h_weather: '天气', csv_h_roadType: '道路类型',
+    csv_h_primary: '一级行为', csv_h_secondary: '二级行为',
     csv_h_tertiary: '三级行为',
-    csv_h_lat: '纬度',
-    csv_h_lng: '经度',
-    csv_h_acc: '精度(米)',
-    csv_h_gpsTime: 'GPS时间',
-    csv_h_notes: '备注'
+    csv_h_lat: '纬度', csv_h_lng: '经度',
+    csv_h_acc: '精度(米)', csv_h_gpsTime: 'GPS时间',
+    csv_h_photos: '照片', csv_h_notes: '备注',
+
+    photo_caption: '违规 #{vid} · 第 {n} 张'
   }
 };
 
 const BEHAVIOR_I18N = {
-  'Use Motor Lane':        { en: 'Use Motor Lane',        zh: '使用机动车道' },
-  'Use Cycle Lane':        { en: 'Use Cycle Lane',        zh: '使用非机动车道' },
-  'Use Bus Lane':          { en: 'Use Bus Lane',          zh: '使用公交车道' },
-  'Use Walkway':           { en: 'Use Walkway',           zh: '使用人行道' },
-  'Other Place':           { en: 'Other Place',           zh: '其他位置' },
-  'Other Behaviors':       { en: 'Other Behaviors',       zh: '其他行为' },
-  'Turn Left':             { en: 'Turn Left',             zh: '左转' },
-  'Turn Right':            { en: 'Turn Right',            zh: '右转' },
-  'Straight':              { en: 'Straight',              zh: '直行' },
-  'Red Light Violation':   { en: 'Red Light Violation',   zh: '闯红灯' },
-  'Helmet Violation':      { en: 'Helmet Violation',      zh: '头盔违规' },
-  'Wrong Way':             { en: 'Wrong Way',             zh: '逆行' },
-  'License Plate':         { en: 'License Plate',         zh: '车牌问题' },
-  'Load':                  { en: 'Load',                  zh: '载货' },
-  'Distracting Driving':   { en: 'Distracting Driving',   zh: '分心驾驶' },
-  'Waiting Position':      { en: 'Waiting Position',      zh: '等待位置' },
-  'Parking':               { en: 'Parking',               zh: '停车' },
-  'Immediate':             { en: 'Immediate',             zh: '直接闯过' },
-  'Wait then Go':          { en: 'Wait then Go',          zh: '等待后通过' },
-  'No Helmet':             { en: 'No Helmet',             zh: '未戴头盔' },
-  'Sport Helmet':          { en: 'Sport Helmet',          zh: '运动头盔' },
-  'Incorrect Wearing':     { en: 'Incorrect Wearing',     zh: '佩戴不规范' },
-  'Regular Road':          { en: 'Regular Road',          zh: '普通道路' },
-  'One-way Road':          { en: 'One-way Road',          zh: '单行道' },
-  'Intersection':          { en: 'Intersection',          zh: '十字路口' },
-  'Obstructed':            { en: 'Obstructed',            zh: '遮挡' },
-  'Damaged':               { en: 'Damaged',               zh: '损坏' },
-  'Missing':               { en: 'Missing',               zh: '缺失' },
-  'Other':                 { en: 'Other',                 zh: '其他' },
-  'Over Height':           { en: 'Over Height',           zh: '超高' },
-  'Over Width':            { en: 'Over Width',            zh: '超宽' },
-  'Over Length':           { en: 'Over Length',           zh: '超长' },
-  'Handheld Device':       { en: 'Handheld Device',       zh: '使用手持设备' },
-  'Music':                 { en: 'Music',                 zh: '听音乐' },
-  'Smoking':               { en: 'Smoking',               zh: '吸烟' },
-  'After Stop Line':       { en: 'After Stop Line',       zh: '越过停止线' },
-  'On Crosswalk':          { en: 'On Crosswalk',          zh: '在斑马线上' },
-  'Horn':                  { en: 'Horn',                  zh: '鸣笛' },
-  'No Signal Turn':        { en: 'No Signal Turn',        zh: '转弯未打信号' },
-  'Roadside':              { en: 'Roadside',              zh: '路边停车' },
-  'Sidewalk':              { en: 'Sidewalk',              zh: '人行道停车' },
-  'Block Exit':            { en: 'Block Exit',            zh: '堵塞出口' },
-  'On Shoulder':           { en: 'On Shoulder',           zh: '在路肩' }
+  'Use Motor Lane': { en:'Use Motor Lane', zh:'使用机动车道' },
+  'Use Cycle Lane': { en:'Use Cycle Lane', zh:'使用非机动车道' },
+  'Use Bus Lane':   { en:'Use Bus Lane',   zh:'使用公交车道' },
+  'Use Walkway':    { en:'Use Walkway',    zh:'使用人行道' },
+  'Other Place':    { en:'Other Place',    zh:'其他位置' },
+  'Other Behaviors':{ en:'Other Behaviors',zh:'其他行为' },
+  'Turn Left':      { en:'Turn Left',      zh:'左转' },
+  'Turn Right':     { en:'Turn Right',     zh:'右转' },
+  'Straight':       { en:'Straight',       zh:'直行' },
+  'Red Light Violation': { en:'Red Light Violation', zh:'闯红灯' },
+  'Helmet Violation':    { en:'Helmet Violation',    zh:'头盔违规' },
+  'Wrong Way':           { en:'Wrong Way',           zh:'逆行' },
+  'License Plate':       { en:'License Plate',       zh:'车牌问题' },
+  'Load':                { en:'Load',                zh:'载货' },
+  'Distracting Driving': { en:'Distracting Driving', zh:'分心驾驶' },
+  'Waiting Position':    { en:'Waiting Position',    zh:'等待位置' },
+  'Parking':             { en:'Parking',             zh:'停车' },
+  'Immediate':       { en:'Immediate',       zh:'直接闯过' },
+  'Wait then Go':    { en:'Wait then Go',    zh:'等待后通过' },
+  'No Helmet':       { en:'No Helmet',       zh:'未戴头盔' },
+  'Sport Helmet':    { en:'Sport Helmet',    zh:'运动头盔' },
+  'Incorrect Wearing':{en:'Incorrect Wearing',zh:'佩戴不规范' },
+  'Regular Road':    { en:'Regular Road',    zh:'普通道路' },
+  'One-way Road':    { en:'One-way Road',    zh:'单行道' },
+  'Intersection':    { en:'Intersection',    zh:'十字路口' },
+  'Obstructed':      { en:'Obstructed',      zh:'遮挡' },
+  'Damaged':         { en:'Damaged',         zh:'损坏' },
+  'Missing':         { en:'Missing',         zh:'缺失' },
+  'Other':           { en:'Other',           zh:'其他' },
+  'Over Height':     { en:'Over Height',     zh:'超高' },
+  'Over Width':      { en:'Over Width',      zh:'超宽' },
+  'Over Length':     { en:'Over Length',     zh:'超长' },
+  'Handheld Device': { en:'Handheld Device', zh:'使用手持设备' },
+  'Music':           { en:'Music',           zh:'听音乐' },
+  'Smoking':         { en:'Smoking',         zh:'吸烟' },
+  'After Stop Line': { en:'After Stop Line', zh:'越过停止线' },
+  'On Crosswalk':    { en:'On Crosswalk',    zh:'在斑马线上' },
+  'Horn':            { en:'Horn',            zh:'鸣笛' },
+  'No Signal Turn':  { en:'No Signal Turn',  zh:'转弯未打信号' },
+  'Roadside':        { en:'Roadside',        zh:'路边停车' },
+  'Sidewalk':        { en:'Sidewalk',        zh:'人行道停车' },
+  'Block Exit':      { en:'Block Exit',      zh:'堵塞出口' },
+  'On Shoulder':     { en:'On Shoulder',     zh:'在路肩' }
 };
 
 let currentLang = 'en';
@@ -740,14 +604,15 @@ try {
   else if ((navigator.language || '').toLowerCase().startsWith('zh')) currentLang = 'zh';
 } catch(e) {}
 
-function t(key) {
-  return (I18N[currentLang] && I18N[currentLang][key]) || (I18N.en && I18N.en[key]) || key;
+function t(key, vars) {
+  let s = (I18N[currentLang] && I18N[currentLang][key]) || (I18N.en && I18N.en[key]) || key;
+  if (vars) Object.keys(vars).forEach(k => { s = s.replace(`{${k}}`, vars[k]); });
+  return s;
 }
 function tb(key) {
   if (!key) return '';
   return (BEHAVIOR_I18N[key] && BEHAVIOR_I18N[key][currentLang]) || key;
 }
-
 function setLang(lang) {
   if (lang !== 'en' && lang !== 'zh') return;
   currentLang = lang;
@@ -755,33 +620,19 @@ function setLang(lang) {
   document.documentElement.lang = (lang === 'zh') ? 'zh-CN' : 'en';
   applyTranslations();
 }
-
 function applyTranslations() {
   document.title = t('app_title');
-  document.querySelectorAll('.lang-toggle button').forEach(b => {
-    b.classList.toggle('active', b.dataset.lang === currentLang);
-  });
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    el.textContent = t(el.dataset.i18n);
-  });
-  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
-    el.placeholder = t(el.dataset.i18nPh);
-  });
+  document.querySelectorAll('.lang-toggle button').forEach(b => b.classList.toggle('active', b.dataset.lang === currentLang));
+  document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => el.placeholder = t(el.dataset.i18nPh));
   const pauseBtn = document.getElementById('pauseBtn');
   if (pauseBtn) pauseBtn.textContent = t(paused ? 'resume_recording' : 'pause_recording');
-  updateCounter();
-  updateGpsUI();
-  updateAllBreadcrumbs();
-  refreshDynamicButtons();
+  updateCounter(); updateGpsUI(); updateAllBreadcrumbs(); updatePhotoHint(); refreshDynamicButtons();
 }
-
 function refreshDynamicButtons() {
-  if (!document.getElementById('pagePrimary').classList.contains('hidden')) {
-    populatePrimaryButtons();
-  }
+  if (!document.getElementById('pagePrimary').classList.contains('hidden')) populatePrimaryButtons();
   if (!document.getElementById('pageSecondary').classList.contains('hidden') && currentRecord) {
-    const sec = behaviors[currentRecord.primary];
-    if (sec) populateSecondaryButtons(sec);
+    const sec = behaviors[currentRecord.primary]; if (sec) populateSecondaryButtons(sec);
   }
   if (!document.getElementById('pageTertiary').classList.contains('hidden') && currentRecord) {
     const tert = behaviors[currentRecord.primary] && behaviors[currentRecord.primary][currentRecord.secondary];
@@ -789,14 +640,12 @@ function refreshDynamicButtons() {
   }
 }
 
+/* ============ App state ============ */
 let records = [], currentRecord = null, paused = false, observerName = '', currentViolationID = 1;
-
+let currentPhotos = [];
 let gpsWatchId = null;
-let gpsState = {
-  status: 'off',
-  lat: null, lng: null, accuracy: null, timestamp: null,
-  errorMessage: ''
-};
+let gpsState = { status: 'off', lat: null, lng: null, accuracy: null, timestamp: null, errorMessage: '' };
+const isWechat = /MicroMessenger/i.test(navigator.userAgent);
 
 const behaviors = {
   "Use Motor Lane": {"Turn Left": null, "Turn Right": null, "Straight": null},
@@ -817,22 +666,101 @@ const behaviors = {
   }
 };
 
-/* ========== GPS ========== */
+/* ============ IndexedDB ============ */
+let _dbPromise = null;
+let _dbAvailable = true;
+
+function openDB() {
+  if (_dbPromise) return _dbPromise;
+  _dbPromise = new Promise((resolve, reject) => {
+    if (!('indexedDB' in window)) { reject(new Error('IndexedDB not available')); return; }
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('records')) db.createObjectStore('records', { keyPath: 'dbKey', autoIncrement: true });
+      if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return _dbPromise;
+}
+
+async function dbAddRecord(record) {
+  try {
+    const db = await openDB();
+    // Strip object URLs (regenerated on restore from blob)
+    const clean = {
+      ...record,
+      photos: (record.photos || []).map(p => ({ id: p.id, blob: p.blob }))
+    };
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(['records'], 'readwrite');
+      const req = tx.objectStore('records').add(clean);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (err) { console.error('dbAddRecord:', err); _dbAvailable = false; }
+}
+
+async function dbGetAllRecords() {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(['records'], 'readonly');
+      const req = tx.objectStore('records').getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (err) { console.error('dbGetAllRecords:', err); return []; }
+}
+
+async function dbClearAll() {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(['records', 'meta'], 'readwrite');
+      tx.objectStore('records').clear();
+      tx.objectStore('meta').clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (err) { console.error('dbClearAll:', err); }
+}
+
+async function dbSetMeta(key, value) {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(['meta'], 'readwrite');
+      const req = tx.objectStore('meta').put({ key, value });
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  } catch (err) { console.error('dbSetMeta:', err); }
+}
+
+async function dbGetMeta(key) {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(['meta'], 'readonly');
+      const req = tx.objectStore('meta').get(key);
+      req.onsuccess = () => resolve(req.result ? req.result.value : null);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (err) { console.error('dbGetMeta:', err); return null; }
+}
+
+/* ============ GPS ============ */
 function startGps() {
-  if (!('geolocation' in navigator)) {
-    gpsState.status = 'unavailable';
-    updateGpsUI();
-    return;
-  }
-  gpsState.status = 'searching';
-  updateGpsUI();
+  if (!('geolocation' in navigator)) { gpsState.status = 'unavailable'; updateGpsUI(); return; }
+  gpsState.status = 'searching'; updateGpsUI();
   try {
     gpsWatchId = navigator.geolocation.watchPosition(
       (pos) => {
-        gpsState.lat = pos.coords.latitude;
-        gpsState.lng = pos.coords.longitude;
-        gpsState.accuracy = pos.coords.accuracy;
-        gpsState.timestamp = pos.timestamp;
+        gpsState.lat = pos.coords.latitude; gpsState.lng = pos.coords.longitude;
+        gpsState.accuracy = pos.coords.accuracy; gpsState.timestamp = pos.timestamp;
         gpsState.errorMessage = '';
         if (gpsState.accuracy <= 20) gpsState.status = 'good';
         else if (gpsState.accuracy <= 50) gpsState.status = 'fair';
@@ -848,36 +776,25 @@ function startGps() {
       },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 }
     );
-  } catch (e) {
-    gpsState.status = 'unavailable';
-    updateGpsUI();
-  }
+  } catch (e) { gpsState.status = 'unavailable'; updateGpsUI(); }
 }
-
 function gpsStatusLabel() {
   switch (gpsState.status) {
-    case 'searching':   return t('gps_searching');
-    case 'good':
-    case 'fair':
-    case 'poor':        return '±' + Math.round(gpsState.accuracy) + 'm';
-    case 'denied':      return t('gps_denied');
+    case 'searching': return t('gps_searching');
+    case 'good': case 'fair': case 'poor': return '±' + Math.round(gpsState.accuracy) + 'm';
+    case 'denied': return t('gps_denied');
     case 'unavailable': return t('gps_unavailable');
-    case 'error':       return t('gps_no_signal');
-    case 'off':
-    default:            return t('gps_off');
+    case 'error': return t('gps_no_signal');
+    default: return t('gps_off');
   }
 }
-
 function updateGpsUI() {
   const pill = document.getElementById('gpsPill');
   const text = document.getElementById('gpsPillText');
   if (pill) {
-    pill.classList.remove('searching', 'good', 'fair', 'poor', 'error');
-    if (['searching','good','fair','poor'].includes(gpsState.status)) {
-      pill.classList.add(gpsState.status);
-    } else if (['denied','unavailable','error'].includes(gpsState.status)) {
-      pill.classList.add('error');
-    }
+    pill.classList.remove('searching','good','fair','poor','error');
+    if (['searching','good','fair','poor'].includes(gpsState.status)) pill.classList.add(gpsState.status);
+    else if (['denied','unavailable','error'].includes(gpsState.status)) pill.classList.add('error');
     text.textContent = gpsStatusLabel();
   }
   const rowDot = document.getElementById('gpsRowDot');
@@ -888,95 +805,178 @@ function updateGpsUI() {
       gpsState.status === 'fair' ? 'var(--warning)' :
       gpsState.status === 'poor' ? '#f97316' :
       gpsState.status === 'searching' ? 'var(--warning)' :
-      ['denied','unavailable','error'].includes(gpsState.status) ? 'var(--danger)' :
-      'var(--muted)';
-    if (gpsState.lat != null) {
-      rowText.textContent = `${gpsState.lat.toFixed(6)}, ${gpsState.lng.toFixed(6)} (±${Math.round(gpsState.accuracy)}m)`;
-    } else {
-      rowText.textContent = gpsStatusLabel();
-    }
+      ['denied','unavailable','error'].includes(gpsState.status) ? 'var(--danger)' : 'var(--muted)';
+    rowText.textContent = (gpsState.lat != null)
+      ? `${gpsState.lat.toFixed(6)}, ${gpsState.lng.toFixed(6)} (±${Math.round(gpsState.accuracy)}m)`
+      : gpsStatusLabel();
   }
 }
-
 function showGpsDetails() {
-  if (gpsState.lat == null) {
-    toast(gpsStatusLabel());
-    return;
-  }
+  if (gpsState.lat == null) { toast(gpsStatusLabel()); return; }
   const dt = gpsState.timestamp ? new Date(gpsState.timestamp).toLocaleTimeString() : '—';
-  alert(
-    `${t('gps_lat')}: ${gpsState.lat.toFixed(6)}\n` +
-    `${t('gps_lng')}: ${gpsState.lng.toFixed(6)}\n` +
-    `${t('gps_acc')}: ±${Math.round(gpsState.accuracy)}m\n` +
-    `${t('gps_updated')}: ${dt}`
-  );
+  alert(`${t('gps_lat')}: ${gpsState.lat.toFixed(6)}\n${t('gps_lng')}: ${gpsState.lng.toFixed(6)}\n${t('gps_acc')}: ±${Math.round(gpsState.accuracy)}m\n${t('gps_updated')}: ${dt}`);
 }
-
 function snapshotGps() {
   return {
-    latitude: gpsState.lat,
-    longitude: gpsState.lng,
+    latitude: gpsState.lat, longitude: gpsState.lng,
     accuracy: gpsState.accuracy,
     gpsTime: gpsState.timestamp ? new Date(gpsState.timestamp).toISOString() : ''
   };
 }
 
-/* ========== Navigation ========== */
+/* ============ Photos ============ */
+function resizeImage(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w >= h) { h = Math.round(h * maxDim / w); w = maxDim; }
+          else { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('toBlob null')), 'image/jpeg', quality);
+      };
+      img.onerror = () => reject(new Error('image load failed'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+async function handlePhotoCapture(input) {
+  const files = Array.from(input.files || []);
+  for (const file of files) {
+    if (currentPhotos.length >= MAX_PHOTOS) {
+      toast(t('alert_max_photos', { n: MAX_PHOTOS }), 'error');
+      break;
+    }
+    try {
+      const blob = await resizeImage(file, PHOTO_MAX_DIM, PHOTO_QUALITY);
+      const id = 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+      const objectUrl = URL.createObjectURL(blob);
+      currentPhotos.push({ id, blob, objectUrl });
+    } catch (e) { console.error(e); toast(t('alert_photo_failed'), 'error'); }
+  }
+  input.value = '';
+  renderPhotoGallery();
+}
+function removePhoto(id) {
+  const idx = currentPhotos.findIndex(p => p.id === id);
+  if (idx === -1) return;
+  try { URL.revokeObjectURL(currentPhotos[idx].objectUrl); } catch(e){}
+  currentPhotos.splice(idx, 1);
+  renderPhotoGallery();
+}
+function renderPhotoGallery() {
+  const gallery = document.getElementById('photoGallery');
+  if (!gallery) return;
+  gallery.innerHTML = '';
+  currentPhotos.forEach(p => {
+    const wrap = document.createElement('div');
+    wrap.className = 'photo-thumb';
+    wrap.onclick = (e) => { if (!e.target.classList.contains('photo-remove')) openPhotoViewer(p.objectUrl); };
+    const img = document.createElement('img'); img.src = p.objectUrl; img.alt = '';
+    const rm = document.createElement('button');
+    rm.className = 'photo-remove'; rm.textContent = '×'; rm.setAttribute('aria-label','Remove');
+    rm.onclick = (e) => { e.stopPropagation(); removePhoto(p.id); };
+    wrap.appendChild(img); wrap.appendChild(rm); gallery.appendChild(wrap);
+  });
+  if (currentPhotos.length < MAX_PHOTOS) {
+    const add = document.createElement('label');
+    add.className = 'photo-add'; add.innerHTML = '+';
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*';
+    inp.setAttribute('capture', 'environment');
+    inp.addEventListener('change', () => handlePhotoCapture(inp));
+    add.appendChild(inp);
+    gallery.appendChild(add);
+  }
+  updatePhotoHint();
+}
+function updatePhotoHint() {
+  const hint = document.getElementById('photoHint');
+  if (hint) hint.textContent = `(${currentPhotos.length}/${MAX_PHOTOS})`;
+}
+function clearCurrentPhotos() {
+  currentPhotos.forEach(p => { try { URL.revokeObjectURL(p.objectUrl); } catch(e){} });
+  currentPhotos = [];
+  renderPhotoGallery();
+}
+function openPhotoViewer(src) {
+  const overlay = document.createElement('div');
+  overlay.className = 'photo-viewer';
+  const img = document.createElement('img'); img.src = src;
+  const close = document.createElement('button'); close.className = 'photo-viewer-close'; close.textContent = '×';
+  const remove = () => { overlay.remove(); document.removeEventListener('keydown', onKey); };
+  const onKey = (e) => { if (e.key === 'Escape') remove(); };
+  overlay.onclick = (e) => { if (e.target === overlay || e.target === close) remove(); };
+  close.onclick = remove;
+  document.addEventListener('keydown', onKey);
+  overlay.appendChild(img); overlay.appendChild(close);
+  document.body.appendChild(overlay);
+}
+
+/* ============ Navigation ============ */
 function show(id) {
   document.querySelectorAll('.page').forEach(e => e.classList.add('hidden'));
   document.getElementById(id).classList.remove('hidden');
   document.getElementById('menu').classList.add('hidden');
-  if (id === 'pageNoteMulti') updateGpsUI();
+  if (id === 'pageNoteMulti') { updateGpsUI(); renderPhotoGallery(); }
 }
-
 function goBack(fromId) {
   if (!currentRecord) { show('page1'); return; }
-  if (fromId === 'pageSecondary') {
-    currentRecord.primary = '';
-    show('pagePrimary');
-  } else if (fromId === 'pageTertiary') {
-    currentRecord.secondary = '';
-    const sec = behaviors[currentRecord.primary];
-    if (sec) populateSecondaryButtons(sec);
+  if (fromId === 'pageSecondary') { currentRecord.primary=''; show('pagePrimary'); }
+  else if (fromId === 'pageTertiary') {
+    currentRecord.secondary='';
+    const sec = behaviors[currentRecord.primary]; if (sec) populateSecondaryButtons(sec);
     show('pageSecondary');
   } else if (fromId === 'pageNoteMulti') {
     if (currentRecord.tertiary) {
-      currentRecord.tertiary = '';
+      currentRecord.tertiary='';
       const tert = behaviors[currentRecord.primary] && behaviors[currentRecord.primary][currentRecord.secondary];
-      if (tert) {
-        populateTertiaryButtons(tert);
-        show('pageTertiary');
-        return;
-      }
+      if (tert) { populateTertiaryButtons(tert); show('pageTertiary'); return; }
     }
     if (currentRecord.secondary) {
-      currentRecord.secondary = '';
+      currentRecord.secondary='';
       const sec = behaviors[currentRecord.primary];
-      if (sec) {
-        populateSecondaryButtons(sec);
-        show('pageSecondary');
-        return;
-      }
+      if (sec) { populateSecondaryButtons(sec); show('pageSecondary'); return; }
     }
     show('pagePrimary');
   }
 }
 
-/* ========== Login / Start ========== */
+/* ============ Login / Start ============ */
 function login() {
   observerName = document.getElementById('observer').value.trim();
   if (!observerName) { toast(t('alert_observer'), 'error'); return; }
+  enterAppShell();
+  dbSetMeta('observer', observerName);
+  show('page1');
+}
+function enterAppShell() {
   document.getElementById('counterPill').classList.remove('hidden');
   document.getElementById('gpsPill').classList.remove('hidden');
   document.getElementById('menuToggleBtn').classList.remove('hidden');
-  startGps();
-  show('page1');
+  if (!gpsWatchId) startGps();
 }
-
 function getSelectedWeather() {
   return Array.from(document.querySelectorAll('#weatherChips input:checked')).map(c => c.value);
 }
-
+function setSelectedWeather(values) {
+  const set = new Set(values || []);
+  document.querySelectorAll('#weatherChips input').forEach(input => {
+    const checked = set.has(input.value);
+    input.checked = checked;
+    input.closest('.chip').classList.toggle('checked', checked);
+  });
+}
 function startRecording() {
   const locationInput = document.getElementById('location').value.trim();
   if (!locationInput) { toast(t('alert_location'), 'error'); return; }
@@ -988,102 +988,68 @@ function startRecording() {
     locationType: document.getElementById('locationType').value,
     weather: getSelectedWeather(),
     roadType: document.getElementById('roadType').value,
-    primary: '',
-    secondary: '',
-    tertiary: '',
-    note: '',
+    primary: '', secondary: '', tertiary: '',
+    note: '', photos: [],
     ...snapshotGps()
   };
+  clearCurrentPhotos();
   populatePrimaryButtons();
   show('pagePrimary');
 }
 
-/* ========== Behavior buttons ========== */
+/* ============ Behavior buttons ============ */
 function populatePrimaryButtons() {
-  const container = document.getElementById('primaryButtons');
-  container.innerHTML = '';
+  const c = document.getElementById('primaryButtons'); c.innerHTML = '';
   Object.keys(behaviors).forEach(k => {
     if (k === 'Other Behaviors') return;
     const b = document.createElement('button');
-    b.className = 'behavior-btn';
-    b.textContent = tb(k);
-    b.onclick = () => selectPrimary(k);
-    container.appendChild(b);
+    b.className = 'behavior-btn'; b.textContent = tb(k);
+    b.onclick = () => selectPrimary(k); c.appendChild(b);
   });
 }
-
 function selectPrimary(k) {
-  currentRecord.primary = k;
+  currentRecord.primary = k; updateAllBreadcrumbs();
   const sec = behaviors[k];
-  updateAllBreadcrumbs();
-  if (sec && Object.keys(sec).length > 0) {
-    populateSecondaryButtons(sec);
-    show('pageSecondary');
-  } else {
-    show('pageNoteMulti');
-  }
+  if (sec && Object.keys(sec).length > 0) { populateSecondaryButtons(sec); show('pageSecondary'); }
+  else show('pageNoteMulti');
 }
-
 function populateSecondaryButtons(sec) {
-  const container = document.getElementById('secondaryButtons');
-  container.innerHTML = '';
+  const c = document.getElementById('secondaryButtons'); c.innerHTML = '';
   Object.keys(sec).forEach(s => {
     const b = document.createElement('button');
-    b.className = 'behavior-btn';
-    b.textContent = tb(s);
-    b.onclick = () => selectSecondary(s);
-    container.appendChild(b);
+    b.className = 'behavior-btn'; b.textContent = tb(s);
+    b.onclick = () => selectSecondary(s); c.appendChild(b);
   });
 }
-
 function selectSecondary(s) {
-  currentRecord.secondary = s;
-  updateAllBreadcrumbs();
+  currentRecord.secondary = s; updateAllBreadcrumbs();
   const tert = behaviors[currentRecord.primary] && behaviors[currentRecord.primary][s];
-  if (tert && Object.keys(tert).length > 0) {
-    populateTertiaryButtons(tert);
-    show('pageTertiary');
-  } else {
-    show('pageNoteMulti');
-  }
+  if (tert && Object.keys(tert).length > 0) { populateTertiaryButtons(tert); show('pageTertiary'); }
+  else show('pageNoteMulti');
 }
-
 function populateTertiaryButtons(ter) {
-  const container = document.getElementById('tertiaryButtons');
-  container.innerHTML = '';
+  const c = document.getElementById('tertiaryButtons'); c.innerHTML = '';
   Object.keys(ter).forEach(tk => {
     const b = document.createElement('button');
-    b.className = 'behavior-btn';
-    b.textContent = tb(tk);
-    b.onclick = () => selectTertiary(tk);
-    container.appendChild(b);
+    b.className = 'behavior-btn'; b.textContent = tb(tk);
+    b.onclick = () => selectTertiary(tk); c.appendChild(b);
   });
 }
+function selectTertiary(tk) { currentRecord.tertiary = tk; updateAllBreadcrumbs(); show('pageNoteMulti'); }
 
-function selectTertiary(tk) {
-  currentRecord.tertiary = tk;
-  updateAllBreadcrumbs();
-  show('pageNoteMulti');
-}
-
-/* ========== Breadcrumb ========== */
+/* ============ Breadcrumb ============ */
 function buildCrumb(parts) {
   const wrap = document.createDocumentFragment();
   parts.filter(Boolean).forEach((p, i) => {
     if (i > 0) {
-      const sep = document.createElement('span');
-      sep.className = 'crumb-sep';
-      sep.textContent = '›';
+      const sep = document.createElement('span'); sep.className = 'crumb-sep'; sep.textContent = '›';
       wrap.appendChild(sep);
     }
-    const span = document.createElement('span');
-    span.className = 'crumb';
-    span.textContent = tb(p);
+    const span = document.createElement('span'); span.className = 'crumb'; span.textContent = tb(p);
     wrap.appendChild(span);
   });
   return wrap;
 }
-
 function updateAllBreadcrumbs() {
   if (!currentRecord) return;
   const sec = document.getElementById('breadcrumbSecondary');
@@ -1094,13 +1060,20 @@ function updateAllBreadcrumbs() {
   if (note) { note.innerHTML = ''; note.appendChild(buildCrumb([currentRecord.primary, currentRecord.secondary, currentRecord.tertiary])); }
 }
 
-/* ========== Save / Pause / Export ========== */
-function saveRecord(cont) {
+/* ============ Save / Pause ============ */
+async function saveRecord(cont) {
   if (paused) { toast(t('alert_recording_paused'), 'error'); return; }
   currentRecord.note = document.getElementById('note').value.trim();
-  // Refresh GPS at the moment of save so the record reflects when the violation was finalised
   Object.assign(currentRecord, snapshotGps());
+  currentRecord.photos = currentPhotos.map(p => ({ id: p.id, blob: p.blob, objectUrl: p.objectUrl }));
   records.push(currentRecord);
+  currentPhotos = []; // hand-off; URLs now belong to record
+
+  // Persist to IndexedDB (non-blocking)
+  dbAddRecord(currentRecord).then(key => { if (key) currentRecord.dbKey = key; });
+  dbSetMeta('observer', observerName);
+  dbSetMeta('currentViolationID', currentViolationID);
+
   updateCounter();
   document.getElementById('note').value = '';
   toast(t('alert_record_saved'), 'success');
@@ -1115,20 +1088,18 @@ function saveRecord(cont) {
       weather: getSelectedWeather(),
       roadType: document.getElementById('roadType').value,
       primary: 'Other Behaviors',
-      secondary: '',
-      tertiary: '',
-      note: '',
+      secondary: '', tertiary: '', note: '', photos: [],
       ...snapshotGps()
     };
-    updateAllBreadcrumbs();
+    updateAllBreadcrumbs(); renderPhotoGallery();
     populateSecondaryButtons(behaviors['Other Behaviors']);
     show('pageSecondary');
   } else {
     currentViolationID++;
+    dbSetMeta('currentViolationID', currentViolationID);
     startRecording();
   }
 }
-
 function pauseResume() {
   paused = !paused;
   document.getElementById('pauseBtn').textContent = t(paused ? 'resume_recording' : 'pause_recording');
@@ -1136,81 +1107,230 @@ function pauseResume() {
   toast(paused ? t('alert_paused') : t('alert_resumed'));
 }
 
-function exportCSV() {
-  document.getElementById('menu').classList.add('hidden');
-  if (records.length === 0) { toast(t('alert_no_records'), 'error'); return; }
-
-  const first = records[0];
-  const dt = new Date(first.time);
-  const yyyy = dt.getFullYear();
-  const mm = ('0' + (dt.getMonth() + 1)).slice(-2);
-  const dd = ('0' + dt.getDate()).slice(-2);
-  const hh = ('0' + dt.getHours()).slice(-2);
-  const min = ('0' + dt.getMinutes()).slice(-2);
-  const loc = (first.location || 'DefaultLocation').replace(/[^a-zA-Z0-9]/g, '');
-  const csvName = `${loc}_${yyyy}${mm}${dd}_${hh}${min}.csv`;
-
+/* ============ Build CSV ============ */
+function buildPhotoFilenamesPerRecord() {
+  return records.map((r, recIdx) =>
+    (r.photos || []).map((p, pi) => `${r.violationID}_r${recIdx + 1}_p${pi + 1}.jpg`)
+  );
+}
+function buildCsv(photoFilenames) {
   const esc = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
   const optTrans = (value, selectId) => {
-    const sel = document.getElementById(selectId);
-    if (!sel) return value;
+    const sel = document.getElementById(selectId); if (!sel) return value;
     const opt = Array.from(sel.options).find(o => o.value === value);
     return opt ? opt.textContent : value;
   };
-  const weatherLookup = { 'Sunny':'w_sunny','Cloudy':'w_cloudy','Overcast':'w_overcast',
-    'Shower':'w_shower','Thunderstorm':'w_thunderstorm','Light/Moderate Rain':'w_light_rain',
-    'Heavy Rain+':'w_heavy_rain','Fog/Haze':'w_fog','Snow/Ice':'w_snow','Other':'w_other' };
-  const weatherTrans = code => weatherLookup[code] ? t(weatherLookup[code]) : code;
+  const weatherLookup = { 'Sunny':'w_sunny','Cloudy':'w_cloudy','Overcast':'w_overcast','Shower':'w_shower','Thunderstorm':'w_thunderstorm','Light/Moderate Rain':'w_light_rain','Heavy Rain+':'w_heavy_rain','Fog/Haze':'w_fog','Snow/Ice':'w_snow','Other':'w_other' };
+  const wTrans = code => weatherLookup[code] ? t(weatherLookup[code]) : code;
 
-  const headers = [
-    t('csv_h_id'), t('csv_h_time'), t('csv_h_observer'),
-    t('csv_h_location'), t('csv_h_locType'), t('csv_h_weather'),
-    t('csv_h_roadType'), t('csv_h_primary'), t('csv_h_secondary'),
-    t('csv_h_tertiary'), t('csv_h_lat'), t('csv_h_lng'),
-    t('csv_h_acc'), t('csv_h_gpsTime'), t('csv_h_notes')
-  ];
+  const headers = [t('csv_h_id'),t('csv_h_time'),t('csv_h_observer'),t('csv_h_location'),t('csv_h_locType'),t('csv_h_weather'),t('csv_h_roadType'),t('csv_h_primary'),t('csv_h_secondary'),t('csv_h_tertiary'),t('csv_h_lat'),t('csv_h_lng'),t('csv_h_acc'),t('csv_h_gpsTime'),t('csv_h_photos'),t('csv_h_notes')];
   let csv = headers.join(',') + '\n';
-
-  records.forEach(r => {
-    const weatherStr = Array.isArray(r.weather) ? r.weather.map(weatherTrans).join(';') : (r.weather || '');
+  records.forEach((r, i) => {
+    const ws = Array.isArray(r.weather) ? r.weather.map(wTrans).join(';') : (r.weather || '');
+    const ps = (photoFilenames[i] || []).join(';');
     csv += [
-      esc(r.violationID),
-      esc(r.time),
-      esc(r.observer),
-      esc(r.location),
+      esc(r.violationID), esc(r.time), esc(r.observer), esc(r.location),
       esc(optTrans(r.locationType, 'locationType')),
-      esc(weatherStr),
+      esc(ws),
       esc(optTrans(r.roadType, 'roadType')),
-      esc(tb(r.primary)),
-      esc(tb(r.secondary)),
-      esc(tb(r.tertiary)),
+      esc(tb(r.primary)), esc(tb(r.secondary)), esc(tb(r.tertiary)),
       esc(r.latitude  != null ? r.latitude.toFixed(6)  : ''),
       esc(r.longitude != null ? r.longitude.toFixed(6) : ''),
       esc(r.accuracy  != null ? r.accuracy.toFixed(1)  : ''),
-      esc(r.gpsTime || ''),
-      esc(r.note)
+      esc(r.gpsTime || ''), esc(ps), esc(r.note)
     ].join(',') + '\n';
   });
+  return csv;
+}
+function downloadBlob(blob, filename) {
+  if (navigator.msSaveBlob) { navigator.msSaveBlob(blob, filename); return; }
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.href = url; link.download = filename;
+  document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+function exportFilenameBase() {
+  const first = records[0];
+  const dt = new Date(first.time);
+  const yyyy = dt.getFullYear();
+  const mm = ('0'+(dt.getMonth()+1)).slice(-2);
+  const dd = ('0'+dt.getDate()).slice(-2);
+  const hh = ('0'+dt.getHours()).slice(-2);
+  const min = ('0'+dt.getMinutes()).slice(-2);
+  const loc = (first.location || 'DefaultLocation').replace(/[^a-zA-Z0-9]/g,'');
+  return `${loc}_${yyyy}${mm}${dd}_${hh}${min}`;
+}
 
-  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-  if (navigator.msSaveBlob) {
-    navigator.msSaveBlob(blob, csvName);
+/* ============ Export actions ============ */
+async function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try { await navigator.clipboard.writeText(text); return true; } catch(e){}
+  }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed'; ta.style.left = '-9999px';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch(e){}
+  document.body.removeChild(ta);
+  return ok;
+}
+async function copyCsvAction() {
+  document.getElementById('menu').classList.add('hidden');
+  if (records.length === 0) { toast(t('alert_no_records'), 'error'); return; }
+  const csv = buildCsv(buildPhotoFilenamesPerRecord());
+  const ok = await copyToClipboard(csv);
+  if (ok) {
+    toast(t('alert_csv_copied'), 'success');
   } else {
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', csvName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    showCsvFallbackModal(csv);
+  }
+}
+function showCsvFallbackModal(csv) {
+  const overlay = document.createElement('div'); overlay.className = 'modal-overlay';
+  const modal = document.createElement('div'); modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-header"><h3 class="modal-title">${t('csv_modal_title')}</h3></div>
+    <div class="modal-body">
+      <p>${t('alert_csv_copy_failed')}</p>
+      <textarea class="csv-preview" readonly></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="csvModalClose">${t('close')}</button>
+    </div>`;
+  modal.querySelector('textarea').value = csv;
+  modal.querySelector('#csvModalClose').onclick = () => overlay.remove();
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.appendChild(modal);
+  document.getElementById('modalContainer').appendChild(overlay);
+  setTimeout(() => modal.querySelector('textarea').select(), 50);
+}
+function viewAllPhotosAction() {
+  document.getElementById('menu').classList.add('hidden');
+  const items = [];
+  records.forEach(r => {
+    (r.photos || []).forEach((p, j) => {
+      items.push({
+        url: p.objectUrl,
+        caption: t('photo_caption', { vid: r.violationID, n: j + 1 })
+      });
+    });
+  });
+  if (items.length === 0) { toast(t('alert_no_photos'), 'error'); return; }
+
+  const overlay = document.createElement('div'); overlay.className = 'gallery-modal';
+  const header = document.createElement('div'); header.className = 'gallery-modal-header';
+  header.innerHTML = `<span class="gallery-modal-title">${t('gallery_title')} (${items.length})</span>`;
+  const close = document.createElement('button'); close.className = 'gallery-modal-close'; close.textContent = '×';
+  const remove = () => { overlay.remove(); document.removeEventListener('keydown', onKey); };
+  const onKey = (e) => { if (e.key === 'Escape') remove(); };
+  close.onclick = remove;
+  document.addEventListener('keydown', onKey);
+  header.appendChild(close);
+
+  const tip = document.createElement('div'); tip.className = 'gallery-modal-tip';
+  tip.textContent = t('photo_save_tip');
+
+  const list = document.createElement('div'); list.className = 'gallery-modal-list';
+  items.forEach(it => {
+    const wrap = document.createElement('div'); wrap.className = 'gallery-modal-item';
+    const img = document.createElement('img'); img.src = it.url; img.alt = it.caption;
+    img.setAttribute('draggable', 'true');
+    const cap = document.createElement('div'); cap.className = 'cap'; cap.textContent = it.caption;
+    wrap.appendChild(img); wrap.appendChild(cap); list.appendChild(wrap);
+  });
+
+  overlay.appendChild(header); overlay.appendChild(tip); overlay.appendChild(list);
+  document.body.appendChild(overlay);
+}
+async function downloadZipAction() {
+  document.getElementById('menu').classList.add('hidden');
+  if (records.length === 0) { toast(t('alert_no_records'), 'error'); return; }
+
+  if (isWechat) {
+    showWechatExportModal();
+    return;
   }
 
-  records = [];
-  currentViolationID = 1;
+  const baseName = exportFilenameBase();
+  const photoFnames = buildPhotoFilenamesPerRecord();
+  const csv = buildCsv(photoFnames);
+  const hasPhotos = records.some(r => r.photos && r.photos.length > 0);
+
+  if (hasPhotos) {
+    if (typeof JSZip === 'undefined') {
+      toast(t('alert_export_failed'), 'error');
+      downloadBlob(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }), baseName + '.csv');
+      return;
+    }
+    toast(t('alert_exporting'));
+    try {
+      const zip = new JSZip();
+      zip.file(baseName + '.csv', '\ufeff' + csv);
+      const folder = zip.folder('photos');
+      records.forEach((r, recIdx) => (r.photos || []).forEach((p, pi) => {
+        folder.file(photoFnames[recIdx][pi], p.blob);
+      }));
+      const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+      downloadBlob(zipBlob, baseName + '.zip');
+      toast(t('alert_csv_exported'), 'success');
+    } catch (e) { console.error(e); toast(t('alert_export_failed'), 'error'); }
+  } else {
+    downloadBlob(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }), baseName + '.csv');
+    toast(t('alert_csv_exported'), 'success');
+  }
+}
+function showWechatExportModal() {
+  const overlay = document.createElement('div'); overlay.className = 'modal-overlay';
+  const modal = document.createElement('div'); modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-header"><h3 class="modal-title">${t('wechat_export_title')}</h3></div>
+    <div class="modal-body">
+      <p>${t('wechat_export_body')}</p>
+      <ol>
+        <li>${t('wechat_export_option1')}</li>
+        <li>${t('wechat_export_option2')}</li>
+      </ol>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" id="wechatModalClose">${t('wechat_got_it')}</button>
+    </div>`;
+  modal.querySelector('#wechatModalClose').onclick = () => overlay.remove();
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.appendChild(modal);
+  document.getElementById('modalContainer').appendChild(overlay);
+}
+
+/* ============ Clear All ============ */
+function confirmClearAll() {
+  document.getElementById('menu').classList.add('hidden');
+  const overlay = document.createElement('div'); overlay.className = 'modal-overlay';
+  const modal = document.createElement('div'); modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-header"><h3 class="modal-title">${t('confirm_clear_title')}</h3></div>
+    <div class="modal-body"><p>${t('confirm_clear_body')}</p></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="clearCancel">${t('cancel')}</button>
+      <button class="btn btn-primary" id="clearConfirm" style="background:var(--danger);">${t('confirm_clear_yes')}</button>
+    </div>`;
+  modal.querySelector('#clearCancel').onclick = () => overlay.remove();
+  modal.querySelector('#clearConfirm').onclick = async () => { overlay.remove(); await clearAllData(); };
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.appendChild(modal);
+  document.getElementById('modalContainer').appendChild(overlay);
+}
+async function clearAllData() {
+  records.forEach(r => (r.photos || []).forEach(p => { try { URL.revokeObjectURL(p.objectUrl); } catch(e){} }));
+  clearCurrentPhotos();
+  records = []; currentRecord = null; currentViolationID = 1; paused = false;
+  await dbClearAll();
+  document.getElementById('counterPill').classList.add('hidden');
+  document.getElementById('menuToggleBtn').classList.add('hidden');
+  document.getElementById('observer').value = observerName; // keep convenience
+  show('loginPage');
   updateCounter();
-  toast(t('alert_csv_exported'), 'success');
-  show('page1');
+  toast(t('alert_data_cleared'), 'success');
 }
 
 function updateCounter() {
@@ -1218,46 +1338,95 @@ function updateCounter() {
   document.getElementById('counterPill').textContent = `${t('recorded_ect')}: ${n}`;
 }
 
-/* ========== Toast ========== */
+/* ============ Toast ============ */
 let toastTimer = null;
 function toast(msg, type) {
   const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = '';
+  el.textContent = msg; el.className = '';
   if (type) el.classList.add(type);
-  void el.offsetWidth;
-  el.classList.add('show');
+  void el.offsetWidth; el.classList.add('show');
   if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
 }
 
-/* ========== Wire-up ========== */
+/* ============ Session restore ============ */
+async function restoreSession() {
+  let stored;
+  try { stored = await dbGetAllRecords(); }
+  catch (err) {
+    console.error('DB read failed:', err);
+    _dbAvailable = false;
+    toast(t('alert_db_unavailable'), 'error');
+    return false;
+  }
+  if (!stored || stored.length === 0) return false;
+
+  records = stored.map(r => ({
+    ...r,
+    photos: (r.photos || []).map(p => ({
+      id: p.id, blob: p.blob,
+      objectUrl: URL.createObjectURL(p.blob)
+    }))
+  }));
+
+  const obs = await dbGetMeta('observer');
+  const vid = await dbGetMeta('currentViolationID');
+  observerName = obs || (records[0] && records[0].observer) || '';
+  currentViolationID = vid || (Math.max(0, ...records.map(r => r.violationID || 0)) + 1);
+
+  // Pre-fill the form from the most recent record for convenience
+  const last = records[records.length - 1];
+  if (last) {
+    document.getElementById('location').value = last.location || '';
+    if (last.locationType) document.getElementById('locationType').value = last.locationType;
+    if (last.roadType) document.getElementById('roadType').value = last.roadType;
+    setSelectedWeather(last.weather || []);
+    document.getElementById('observer').value = observerName;
+  }
+
+  if (observerName) {
+    enterAppShell();
+    show('page1');
+  }
+  updateCounter();
+  toast(t('alert_session_restored', { n: [...new Set(records.map(r => r.violationID))].length }), 'success');
+  return true;
+}
+
+/* ============ Wire-up ============ */
 document.getElementById('menuToggleBtn').addEventListener('click', (e) => {
   e.stopPropagation();
   document.getElementById('menu').classList.toggle('hidden');
 });
-
 document.addEventListener('click', (e) => {
   const menu = document.getElementById('menu');
   const btn = document.getElementById('menuToggleBtn');
-  if (!menu.classList.contains('hidden') && !menu.contains(e.target) && e.target !== btn) {
-    menu.classList.add('hidden');
-  }
+  if (!menu.classList.contains('hidden') && !menu.contains(e.target) && e.target !== btn) menu.classList.add('hidden');
 });
-
 document.querySelectorAll('#weatherChips input').forEach(input => {
   const chip = input.closest('.chip');
-  input.addEventListener('change', () => {
-    chip.classList.toggle('checked', input.checked);
-  });
+  input.addEventListener('change', () => chip.classList.toggle('checked', input.checked));
 });
 
-document.addEventListener('DOMContentLoaded', () => {
-  applyTranslations();
-  show('loginPage');
+window.addEventListener('beforeunload', (e) => {
+  if (records.length > 0 && _dbAvailable) {
+    // No need to warn — data is persisted to IndexedDB. Only warn if DB unavailable.
+    return;
+  }
+  if (records.length > 0) { e.preventDefault(); e.returnValue = ''; }
 });
-if (document.readyState !== 'loading') {
+
+async function init() {
   applyTranslations();
+  if (isWechat) document.getElementById('wechatBanner').classList.remove('hidden');
+  show('loginPage');
+  renderPhotoGallery();
+  await restoreSession();
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
 }
 </script>
 </body>
