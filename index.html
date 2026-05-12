@@ -253,17 +253,26 @@ textarea { resize: vertical; min-height: 100px; }
       <label class="chip"><input type="checkbox" value="Snow/Ice"><span data-i18n="w_snow">Snow/Ice</span></label>
       <label class="chip"><input type="checkbox" value="Other"><span data-i18n="w_other">Other</span></label>
     </div>
-    <label class="field" for="roadType" data-i18n="road_type">Road Type</label>
-    <select id="roadType">
-      <option value="Intersection" data-i18n="rt_intersection">Intersection</option>
-      <option value="T-junction" data-i18n="rt_tjunction">T-junction</option>
-      <option value="Straight Road" data-i18n="rt_straight">Straight Road</option>
-      <option value="One-way" data-i18n="rt_oneway">One-way</option>
-      <option value="Single-lane Road" data-i18n="rt_single_lane">Single-lane Road</option>
-      <option value="Multi-lane Road" data-i18n="rt_multi_lane">Multi-lane Road</option>
-      <option value="Overpass/Intersection" data-i18n="rt_overpass">Overpass/Intersection</option>
-      <option value="Other" data-i18n="rt_other">Other</option>
+    <label class="field" data-i18n="road_type">Road Type</label>
+    <div id="roadTypeChips" class="chip-group">
+      <label class="chip"><input type="checkbox" value="Intersection"><span data-i18n="rt_intersection">Intersection</span></label>
+      <label class="chip"><input type="checkbox" value="T-junction"><span data-i18n="rt_tjunction">T-junction</span></label>
+      <label class="chip"><input type="checkbox" value="Straight Road"><span data-i18n="rt_straight">Straight Road</span></label>
+      <label class="chip"><input type="checkbox" value="One-way"><span data-i18n="rt_oneway">One-way</span></label>
+      <label class="chip"><input type="checkbox" value="Single-lane Road"><span data-i18n="rt_single_lane">Single-lane Road</span></label>
+      <label class="chip"><input type="checkbox" value="Multi-lane Road"><span data-i18n="rt_multi_lane">Multi-lane Road</span></label>
+      <label class="chip"><input type="checkbox" value="Overpass/Intersection"><span data-i18n="rt_overpass">Overpass/Intersection</span></label>
+      <label class="chip"><input type="checkbox" value="Other"><span data-i18n="rt_other">Other</span></label>
+    </div>
+
+    <label class="field" for="cycleLaneType" data-i18n="cycle_lane_type">Cycle Lane Category</label>
+    <select id="cycleLaneType">
+      <option value="Median-separated cycle lane" data-i18n="cl_protected">Median-separated cycle lane</option>
+      <option value="Fence-separated cycle lane" data-i18n="cl_fence">Fence-separated cycle lane</option>
+      <option value="Conventional cycle lane" data-i18n="cl_conventional">Conventional cycle lane</option>
+      <option value="Shared lane" data-i18n="cl_shared">Shared lane</option>
     </select>
+
     <div style="margin-top:20px"></div>
     <button class="btn btn-primary" onclick="startRecording()" data-i18n="start_recording">Start Recording</button>
   </div>
@@ -422,6 +431,12 @@ const I18N = {
     rt_single_lane: 'Single-lane Road', rt_multi_lane: 'Multi-lane Road',
     rt_overpass: 'Overpass/Intersection', rt_other: 'Other',
 
+    cycle_lane_type: 'Cycle Lane Category',
+    cl_protected: 'Median-separated cycle lane',
+    cl_fence: 'Fence-separated cycle lane',
+    cl_conventional: 'Conventional cycle lane',
+    cl_shared: 'Shared lane',
+
     csv_h_id: 'ViolationID', csv_h_time: 'Time', csv_h_observer: 'Observer',
     csv_h_location: 'Location', csv_h_locType: 'LocationType',
     csv_h_weather: 'Weather', csv_h_roadType: 'RoadType',
@@ -430,6 +445,7 @@ const I18N = {
     csv_h_lat: 'Latitude', csv_h_lng: 'Longitude',
     csv_h_acc: 'Accuracy(m)', csv_h_gpsTime: 'GPSTime',
     csv_h_photos: 'Photos', csv_h_notes: 'Notes',
+    csv_h_cycleLane: 'CycleLaneType',
 
     photo_caption: 'Violation #{vid} · Photo {n}'
   },
@@ -538,6 +554,12 @@ const I18N = {
     rt_single_lane: '单车道道路', rt_multi_lane: '多车道道路',
     rt_overpass: '立交 / 交汇', rt_other: '其他',
 
+    cycle_lane_type: '非机动车道类别',
+    cl_protected: '隔离带分隔非机动车道',
+    cl_fence: '栅栏分隔非机动车道',
+    cl_conventional: '划线非机动车道',
+    cl_shared: '共享车道',
+
     csv_h_id: '违规ID', csv_h_time: '时间', csv_h_observer: '观察员',
     csv_h_location: '地点', csv_h_locType: '地点类型',
     csv_h_weather: '天气', csv_h_roadType: '道路类型',
@@ -546,6 +568,7 @@ const I18N = {
     csv_h_lat: '纬度', csv_h_lng: '经度',
     csv_h_acc: '精度(米)', csv_h_gpsTime: 'GPS时间',
     csv_h_photos: '照片', csv_h_notes: '备注',
+    csv_h_cycleLane: '非机动车道类别',
 
     photo_caption: '违规 #{vid} · 第 {n} 张'
   }
@@ -977,6 +1000,19 @@ function setSelectedWeather(values) {
     input.closest('.chip').classList.toggle('checked', checked);
   });
 }
+function getSelectedRoadTypes() {
+  return Array.from(document.querySelectorAll('#roadTypeChips input:checked')).map(c => c.value);
+}
+function setSelectedRoadTypes(values) {
+  // Tolerate legacy string values from older records
+  if (typeof values === 'string') values = values ? [values] : [];
+  const set = new Set(values || []);
+  document.querySelectorAll('#roadTypeChips input').forEach(input => {
+    const checked = set.has(input.value);
+    input.checked = checked;
+    input.closest('.chip').classList.toggle('checked', checked);
+  });
+}
 function startRecording() {
   const locationInput = document.getElementById('location').value.trim();
   if (!locationInput) { toast(t('alert_location'), 'error'); return; }
@@ -987,7 +1023,8 @@ function startRecording() {
     location: locationInput,
     locationType: document.getElementById('locationType').value,
     weather: getSelectedWeather(),
-    roadType: document.getElementById('roadType').value,
+    roadType: getSelectedRoadTypes(),
+    cycleLaneType: document.getElementById('cycleLaneType').value,
     primary: '', secondary: '', tertiary: '',
     note: '', photos: [],
     ...snapshotGps()
@@ -1086,7 +1123,8 @@ async function saveRecord(cont) {
       location: document.getElementById('location').value.trim() || 'DefaultLocation',
       locationType: document.getElementById('locationType').value,
       weather: getSelectedWeather(),
-      roadType: document.getElementById('roadType').value,
+      roadType: getSelectedRoadTypes(),
+      cycleLaneType: document.getElementById('cycleLaneType').value,
       primary: 'Other Behaviors',
       secondary: '', tertiary: '', note: '', photos: [],
       ...snapshotGps()
@@ -1122,17 +1160,21 @@ function buildCsv(photoFilenames) {
   };
   const weatherLookup = { 'Sunny':'w_sunny','Cloudy':'w_cloudy','Overcast':'w_overcast','Shower':'w_shower','Thunderstorm':'w_thunderstorm','Light/Moderate Rain':'w_light_rain','Heavy Rain+':'w_heavy_rain','Fog/Haze':'w_fog','Snow/Ice':'w_snow','Other':'w_other' };
   const wTrans = code => weatherLookup[code] ? t(weatherLookup[code]) : code;
+  const roadTypeLookup = { 'Intersection':'rt_intersection','T-junction':'rt_tjunction','Straight Road':'rt_straight','One-way':'rt_oneway','Single-lane Road':'rt_single_lane','Multi-lane Road':'rt_multi_lane','Overpass/Intersection':'rt_overpass','Other':'rt_other' };
+  const rtTrans = code => roadTypeLookup[code] ? t(roadTypeLookup[code]) : code;
 
-  const headers = [t('csv_h_id'),t('csv_h_time'),t('csv_h_observer'),t('csv_h_location'),t('csv_h_locType'),t('csv_h_weather'),t('csv_h_roadType'),t('csv_h_primary'),t('csv_h_secondary'),t('csv_h_tertiary'),t('csv_h_lat'),t('csv_h_lng'),t('csv_h_acc'),t('csv_h_gpsTime'),t('csv_h_photos'),t('csv_h_notes')];
+  const headers = [t('csv_h_id'),t('csv_h_time'),t('csv_h_observer'),t('csv_h_location'),t('csv_h_locType'),t('csv_h_weather'),t('csv_h_roadType'),t('csv_h_cycleLane'),t('csv_h_primary'),t('csv_h_secondary'),t('csv_h_tertiary'),t('csv_h_lat'),t('csv_h_lng'),t('csv_h_acc'),t('csv_h_gpsTime'),t('csv_h_photos'),t('csv_h_notes')];
   let csv = headers.join(',') + '\n';
   records.forEach((r, i) => {
     const ws = Array.isArray(r.weather) ? r.weather.map(wTrans).join(';') : (r.weather || '');
+    const rts = Array.isArray(r.roadType) ? r.roadType.map(rtTrans).join(';') : (r.roadType ? rtTrans(r.roadType) : '');
     const ps = (photoFilenames[i] || []).join(';');
     csv += [
       esc(r.violationID), esc(r.time), esc(r.observer), esc(r.location),
       esc(optTrans(r.locationType, 'locationType')),
       esc(ws),
-      esc(optTrans(r.roadType, 'roadType')),
+      esc(rts),
+      esc(optTrans(r.cycleLaneType, 'cycleLaneType')),
       esc(tb(r.primary)), esc(tb(r.secondary)), esc(tb(r.tertiary)),
       esc(r.latitude  != null ? r.latitude.toFixed(6)  : ''),
       esc(r.longitude != null ? r.longitude.toFixed(6) : ''),
@@ -1379,7 +1421,8 @@ async function restoreSession() {
   if (last) {
     document.getElementById('location').value = last.location || '';
     if (last.locationType) document.getElementById('locationType').value = last.locationType;
-    if (last.roadType) document.getElementById('roadType').value = last.roadType;
+    setSelectedRoadTypes(last.roadType || []);
+    if (last.cycleLaneType) document.getElementById('cycleLaneType').value = last.cycleLaneType;
     setSelectedWeather(last.weather || []);
     document.getElementById('observer').value = observerName;
   }
@@ -1403,7 +1446,7 @@ document.addEventListener('click', (e) => {
   const btn = document.getElementById('menuToggleBtn');
   if (!menu.classList.contains('hidden') && !menu.contains(e.target) && e.target !== btn) menu.classList.add('hidden');
 });
-document.querySelectorAll('#weatherChips input').forEach(input => {
+document.querySelectorAll('.chip input').forEach(input => {
   const chip = input.closest('.chip');
   input.addEventListener('change', () => chip.classList.toggle('checked', input.checked));
 });
