@@ -404,6 +404,8 @@ const I18N = {
     alert_no_records: 'No records to export',
     alert_recording_paused: 'Recording is paused',
     alert_record_saved: 'Record saved',
+    alert_save_failed: 'Save failed — please retry',
+    alert_saving: 'Saving...',
     alert_csv_copied: 'CSV copied to clipboard',
     alert_csv_copy_failed: 'Copy failed — manually select and copy the text below',
     alert_csv_exported: 'Export complete',
@@ -527,6 +529,8 @@ const I18N = {
     alert_no_records: '没有可导出的记录',
     alert_recording_paused: '记录处于暂停状态',
     alert_record_saved: '记录已保存',
+    alert_save_failed: '保存失败,请重试',
+    alert_saving: '保存中...',
     alert_csv_copied: 'CSV 已复制到剪贴板',
     alert_csv_copy_failed: '复制失败,请手动选中下方文字并复制',
     alert_csv_exported: '导出完成',
@@ -666,6 +670,7 @@ function refreshDynamicButtons() {
 /* ============ App state ============ */
 let records = [], currentRecord = null, paused = false, observerName = '', currentViolationID = 1;
 let currentPhotos = [];
+let pendingRecords = []; // sub-records buffered for the current violation event; written atomically with the final Save & Next
 let saving = false; // reentrancy guard to prevent double-tap from creating duplicate / skipped IDs
 let gpsWatchId = null;
 let gpsState = { status: 'off', lat: null, lng: null, accuracy: null, timestamp: null, errorMessage: '' };
@@ -746,6 +751,33 @@ async function dbCommitSave(record, observer, nextViolationID) {
       tx.onabort = () => reject(tx.error);
     });
   } catch (err) { console.error('dbCommitSave:', err); _dbAvailable = false; return null; }
+}
+
+/* Batch atomic save: writes an ARRAY of records + meta updates in a single
+   transaction. Used to commit all sub-records of one violation event (created
+   via "Multiple Violations") together. Either all sub-records persist, or none —
+   no more orphan records like an "Other Behaviors" without its lane-use sibling. */
+async function dbBatchCommit(recordsArr, observer, nextViolationID) {
+  try {
+    const db = await openDB();
+    const cleanRecords = recordsArr.map(r => ({
+      ...r,
+      photos: (r.photos || []).map(p => ({ id: p.id, blob: p.blob }))
+    }));
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(['records', 'meta'], 'readwrite');
+      const dbKeys = [];
+      cleanRecords.forEach((clean, idx) => {
+        const req = tx.objectStore('records').add(clean);
+        req.onsuccess = () => { dbKeys[idx] = req.result; };
+      });
+      tx.objectStore('meta').put({ key: 'observer', value: observer });
+      tx.objectStore('meta').put({ key: 'currentViolationID', value: nextViolationID });
+      tx.oncomplete = () => resolve(dbKeys);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  } catch (err) { console.error('dbBatchCommit:', err); _dbAvailable = false; return null; }
 }
 
 async function dbGetAllRecords() {
@@ -1129,25 +1161,15 @@ async function saveRecord(cont) {
     currentRecord.note = document.getElementById('note').value.trim();
     Object.assign(currentRecord, snapshotGps());
     currentRecord.photos = currentPhotos.map(p => ({ id: p.id, blob: p.blob, objectUrl: p.objectUrl }));
-    records.push(currentRecord);
-    const recToSave = currentRecord; // stable reference; currentRecord may be reassigned below
-    currentPhotos = []; // hand-off; URLs now belong to record
-
-    // What currentViolationID will be after this save commits
-    const nextID = cont ? currentViolationID : currentViolationID + 1;
-
-    // Atomic write: record + meta in a single IDB transaction.
-    // If this fails, neither the record nor the ID counter advances, so on
-    // restart we resume at the same ID and re-record it cleanly — no gaps.
-    dbCommitSave(recToSave, observerName, nextID).then(key => {
-      if (key) recToSave.dbKey = key;
-    });
-
-    updateCounter();
-    document.getElementById('note').value = '';
-    toast(t('alert_record_saved'), 'success');
+    currentPhotos = []; // hand-off; URLs now belong to the record
 
     if (cont) {
+      // "Multiple Violations" — buffer this sub-record in memory only.
+      // Nothing is written to IDB yet. The whole batch commits on Save & Next.
+      pendingRecords.push(currentRecord);
+      document.getElementById('note').value = '';
+      toast(t('alert_behavior_added'), 'success');
+
       currentRecord = {
         violationID: currentViolationID,
         time: new Date().toISOString(),
@@ -1165,7 +1187,49 @@ async function saveRecord(cont) {
       populateSecondaryButtons(behaviors['Other Behaviors']);
       show('pageSecondary');
     } else {
-      currentViolationID++; // in-memory matches what we just committed to meta
+      // "Save & Next" — atomically commit any buffered sub-records together
+      // with the current record. All-or-nothing: no orphan sub-records possible.
+      const batch = [...pendingRecords, currentRecord];
+      pendingRecords = [];
+
+      const nextID = currentViolationID + 1;
+
+      // Show "saving..." after 500ms so the user knows the app isn't frozen
+      // during slow IDB writes (large photo blobs).
+      const slowToastTimer = setTimeout(() => toast(t('alert_saving'), ''), 500);
+
+      // AWAIT the write. If the transaction throws (quota, browser kill, etc.),
+      // restore pendingRecords and stay on this page — the user sees an error
+      // and can simply tap save again. Critically: we do NOT push to records[]
+      // or advance to the next violation until persistence is confirmed,
+      // preventing silent data loss / orphaned sub-records.
+      let dbKeys;
+      try {
+        dbKeys = await dbBatchCommit(batch, observerName, nextID);
+      } catch (err) {
+        clearTimeout(slowToastTimer);
+        console.error('Save failed:', err);
+        // Roll back: put the sub-records back into the pending buffer so the
+        // user can retry without losing them. currentRecord is unchanged.
+        pendingRecords = batch.slice(0, -1);
+        // Restore photo gallery so the user sees their photos for retry
+        currentPhotos = currentRecord.photos.map(p => ({ id: p.id, blob: p.blob, objectUrl: p.objectUrl }));
+        renderPhotoGallery();
+        toast(t('alert_save_failed'), 'error');
+        return;
+      }
+      clearTimeout(slowToastTimer);
+
+      if (dbKeys) batch.forEach((r, i) => { if (dbKeys[i]) r.dbKey = dbKeys[i]; });
+
+      // Commit in-memory state ONLY after successful persistence.
+      batch.forEach(r => records.push(r));
+
+      updateCounter();
+      document.getElementById('note').value = '';
+      toast(t('alert_record_saved'), 'success');
+
+      currentViolationID++;
       startRecording();
     }
   } finally {
@@ -1181,9 +1245,24 @@ function pauseResume() {
 
 /* ============ Build CSV ============ */
 function buildPhotoFilenamesPerRecord() {
-  return records.map((r, recIdx) =>
-    (r.photos || []).map((p, pi) => `${r.violationID}_r${recIdx + 1}_p${pi + 1}.jpg`)
-  );
+  // Naming convention: {paddedViolationID}_r{subIdx}_p{photoIdx}.jpg
+  //   - paddedViolationID: violation ID, zero-padded to 4 digits (e.g. "0007").
+  //     Makes filenames sort alphabetically in natural numeric order.
+  //   - subIdx: 1-based index of this record AMONG records sharing the same
+  //     violationID. Resets per violation. First record under a given ID is r1;
+  //     additional records from "Multiple Violations" become r2, r3, ...
+  //   - photoIdx: 1-based index of this photo within the current record (1..MAX_PHOTOS).
+  // This means: even if violation IDs have gaps, or "Multiple Violations" is used,
+  // every photo has a self-explanatory filename traceable back to its CSV row.
+  const subRecordCounter = {};
+  return records.map((r) => {
+    subRecordCounter[r.violationID] = (subRecordCounter[r.violationID] || 0) + 1;
+    const subIdx = subRecordCounter[r.violationID];
+    const paddedID = String(r.violationID).padStart(4, '0');
+    return (r.photos || []).map((p, pi) =>
+      `${paddedID}_r${subIdx}_p${pi + 1}.jpg`
+    );
+  });
 }
 function buildCsv(photoFilenames) {
   const esc = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
